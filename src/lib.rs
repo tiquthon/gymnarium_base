@@ -2,7 +2,6 @@
 //!
 //! `gymnarium_base` is a collection of traits and enums to support creating
 //! reinforcement environments like the python package `gym`.
-//!
 
 /// Dimension values either as discrete value or continuous value.
 #[derive(Debug, Clone)]
@@ -286,7 +285,9 @@ pub trait Agent<E: std::error::Error> {
     ///
     /// Should be called even before the first step is done.
     /// Otherwise the agent could be in an invalid state.
-    fn reset(&mut self) -> Result<(), E>;
+    ///
+    /// Optionally a seed can be given to initialise the internal random number generator.
+    fn reset(&mut self, random_seed: Option<Seed>) -> Result<(), E>;
 
     /// Returns an action based on the environment state given.
     fn choose_action(&self, state: &EnvironmentState) -> Result<AgentAction, E>;
