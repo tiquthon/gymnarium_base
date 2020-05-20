@@ -10,6 +10,29 @@ pub enum DimensionValue {
     CONTINUOUS(f64),
 }
 
+impl PartialEq for DimensionValue {
+    /// ```
+    /// # use gymnarium_base::DimensionValue;
+    /// assert_eq!(DimensionValue::DISCRETE(1), DimensionValue::DISCRETE(1));
+    /// assert_ne!(DimensionValue::DISCRETE(1), DimensionValue::DISCRETE(2));
+    /// assert_ne!(DimensionValue::DISCRETE(1), DimensionValue::CONTINUOUS(1.0));
+    /// assert_eq!(DimensionValue::CONTINUOUS(1.0), DimensionValue::CONTINUOUS(1.0));
+    /// assert_ne!(DimensionValue::CONTINUOUS(1.0), DimensionValue::CONTINUOUS(1.1));
+    /// ```
+    fn eq(&self, other: &Self) -> bool {
+        match *self {
+            DimensionValue::DISCRETE(i) => match *other {
+                DimensionValue::DISCRETE(j) => i == j,
+                _ => false,
+            },
+            DimensionValue::CONTINUOUS(f) => match *other {
+                DimensionValue::CONTINUOUS(g) => f == g,
+                _ => false,
+            },
+        }
+    }
+}
+
 /// Inclusive boundaries of dimension values.
 #[derive(Debug, Clone)]
 pub enum DimensionBoundaries {
@@ -58,6 +81,52 @@ impl DimensionBoundaries {
             Self::CONTINUOUS { minimum, maximum } => match value {
                 DimensionValue::CONTINUOUS(val) => minimum <= val && val <= maximum,
                 DimensionValue::DISCRETE(val) => *minimum <= *val as f64 && *val as f64 <= *maximum,
+            },
+        }
+    }
+}
+
+impl PartialEq for DimensionBoundaries {
+    /// ```
+    /// # use gymnarium_base::DimensionBoundaries;
+    /// assert_eq!(
+    ///     DimensionBoundaries::DISCRETE {minimum: 1, maximum: 2},
+    ///     DimensionBoundaries::DISCRETE {minimum: 1, maximum: 2}
+    /// );
+    /// assert_eq!(
+    ///     DimensionBoundaries::CONTINUOUS {minimum: 1.5, maximum: 3.3},
+    ///     DimensionBoundaries::CONTINUOUS {minimum: 1.5, maximum: 3.3}
+    /// );
+    /// assert_ne!(
+    ///     DimensionBoundaries::DISCRETE {minimum: 1, maximum: 2},
+    ///     DimensionBoundaries::CONTINUOUS {minimum: 1.5, maximum: 3.3}
+    /// );
+    /// assert_ne!(
+    ///     DimensionBoundaries::DISCRETE {minimum: 1, maximum: 2},
+    ///     DimensionBoundaries::DISCRETE {minimum: 2, maximum: 3}
+    /// );
+    /// ```
+    fn eq(&self, other: &Self) -> bool {
+        match *self {
+            DimensionBoundaries::DISCRETE {
+                minimum: self_minimum,
+                maximum: self_maximum,
+            } => match *other {
+                DimensionBoundaries::DISCRETE {
+                    minimum: other_minimum,
+                    maximum: other_maximum,
+                } => self_minimum == other_minimum && self_maximum == other_maximum,
+                _ => false,
+            },
+            DimensionBoundaries::CONTINUOUS {
+                minimum: self_minimum,
+                maximum: self_maximum,
+            } => match *other {
+                DimensionBoundaries::CONTINUOUS {
+                    minimum: other_minimum,
+                    maximum: other_maximum,
+                } => self_minimum == other_minimum && self_maximum == other_maximum,
+                _ => false,
             },
         }
     }
