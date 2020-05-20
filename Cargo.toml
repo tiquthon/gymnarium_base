@@ -1,0 +1,9 @@
+[package]
+name = "gymnarium_base"
+version = "0.1.0"
+authors = ["Thimo Neumann <tiquthon@gmail.com>"]
+edition = "2018"
+description = "The base crate for the gymnarium libraries containing traits and enums to support creating reinforcement environments like the python package gym."
+license = "MIT"
+
+[dependencies]
