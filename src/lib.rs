@@ -132,9 +132,6 @@ impl PartialEq for DimensionBoundaries {
     }
 }
 
-/// List of dimension boundaries for available environment agent actions.
-pub type ActionSpace = Vec<DimensionBoundaries>;
-
 /// List of dimension boundaries for the observable environment state.
 pub type ObservationSpace = Vec<DimensionBoundaries>;
 
@@ -143,6 +140,113 @@ pub type EnvironmentState = Vec<DimensionValue>;
 
 /// List of dimension values as the agent action.
 pub type AgentAction = Vec<DimensionValue>;
+
+/// Error used for function `action_space_contains_agent_action`.
+#[derive(Debug, PartialEq)]
+pub enum AgentActionSpaceComparisonError {
+    MismatchedSizes {
+        action_space_size: usize,
+        agent_action_size: usize,
+    },
+    ActionInvalid {
+        index: usize,
+    },
+}
+
+impl std::fmt::Display for AgentActionSpaceComparisonError {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            AgentActionSpaceComparisonError::MismatchedSizes {
+                action_space_size,
+                agent_action_size,
+            } => write!(
+                f,
+                "Given action ({}) does not match expected length ({})",
+                agent_action_size, action_space_size
+            ),
+            AgentActionSpaceComparisonError::ActionInvalid { index } => {
+                write!(f, "action[{}] is invalid", index)
+            }
+        }
+    }
+}
+
+impl std::error::Error for AgentActionSpaceComparisonError {}
+
+/// List of dimension boundaries for available environment agent actions.
+pub type ActionSpace = Vec<DimensionBoundaries>;
+
+/// Checks whether a AgentAction is inside a ActionSpace returning Ok if inside and all errors if outside
+///
+/// # Examples
+/// ```
+/// # use gymnarium_base::{
+/// #     ActionSpace,
+/// #     DimensionBoundaries,
+/// #     DimensionValue,
+/// #     action_space_contains_agent_action,
+/// #     AgentActionSpaceComparisonError
+/// # };
+/// let action_space = vec!(
+///     DimensionBoundaries::DISCRETE { minimum: -5, maximum: 4 },
+///     DimensionBoundaries::CONTINUOUS { minimum: 10.5, maximum: 10.9 }
+/// );
+///
+/// assert!(action_space_contains_agent_action(&action_space, &vec!(
+///     DimensionValue::DISCRETE(0),
+///     DimensionValue::CONTINUOUS(10.6)
+/// )).is_ok());
+///
+/// assert_eq!(
+///     Err(vec!(AgentActionSpaceComparisonError::MismatchedSizes {
+///         action_space_size: 2, agent_action_size: 1
+///     })),
+///     action_space_contains_agent_action(&action_space, &vec!(
+///         DimensionValue::DISCRETE(0)
+///     ))
+/// );
+///
+/// assert_eq!(
+///     Err(vec!(AgentActionSpaceComparisonError::ActionInvalid {
+///         index: 1
+///     })),
+///     action_space_contains_agent_action(&action_space, &vec!(
+///         DimensionValue::DISCRETE(0),
+///         DimensionValue::DISCRETE(10)
+///     ))
+/// );
+/// ```
+pub fn action_space_contains_agent_action(
+    action_space: &ActionSpace,
+    agent_action: &AgentAction,
+) -> Result<(), Vec<AgentActionSpaceComparisonError>> {
+    if action_space.len() != agent_action.len() {
+        Err(vec![AgentActionSpaceComparisonError::MismatchedSizes {
+            action_space_size: action_space.len(),
+            agent_action_size: agent_action.len(),
+        }])
+    } else {
+        let k = action_space
+            .iter()
+            .zip(agent_action.iter())
+            .zip(0..action_space.len())
+            .map(|((boundaries, value), index)| {
+                if boundaries.contains(value) {
+                    None
+                } else {
+                    Some(AgentActionSpaceComparisonError::ActionInvalid { index })
+                }
+            })
+            .filter(|o| o.is_some())
+            .map(|o| o.unwrap())
+            .collect::<Vec<AgentActionSpaceComparisonError>>();
+        if k.is_empty() {
+            Ok(())
+        } else {
+            Err(k)
+        }
+    }
+}
 
 /// Provides conversion from various values into acceptable seed values.
 pub struct Seed {
