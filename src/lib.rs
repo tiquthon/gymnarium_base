@@ -1,32 +1,176 @@
 //! # Gymnarium Base
 //!
-//! `gymnarium_base` is a collection of traits and enums to support creating
+//! `gymnarium_base` is a collection of structs, traits and enums to support creating
 //! reinforcement environments like the python package `gym`.
 
-/// Dimension values either as discrete value or continuous value.
+extern crate num_traits;
+
+use std::fmt::Debug;
+
+use num_traits::{Float, PrimInt};
+
+/// Dimension values either as discrete value, continuous value or containing more values.
 #[derive(Debug, Clone)]
-pub enum DimensionValue {
-    DISCRETE(i64),
-    CONTINUOUS(f64),
+pub enum DimensionValue<D: PrimInt + Debug, C: Float + Debug> {
+    DISCRETE(D),
+    CONTINUOUS(C),
+    MULTIPLE(Vec<DimensionValue<D, C>>),
 }
 
-impl PartialEq for DimensionValue {
+/// Alias for DimensionValue<i32, f32>
+pub type DimensionValueI32F32 = DimensionValue<i32, f32>;
+
+/// Alias for DimensionValue<i64, f64>
+pub type DimensionValueI64F64 = DimensionValue<i64, f64>;
+
+/// Alias for DimensionValue<u32, f32>
+pub type DimensionValueU32F32 = DimensionValue<u32, f32>;
+
+/// Alias for DimensionValue<u64, f64>
+pub type DimensionValueU64F64 = DimensionValue<u64, f64>;
+
+impl<D: PrimInt + Debug, C: Float + Debug> DimensionValue<D, C> {
+    /// Creates a new discrete DimensionValue.
+    ///
+    /// # Examples
     /// ```
-    /// # use gymnarium_base::DimensionValue;
-    /// assert_eq!(DimensionValue::DISCRETE(1), DimensionValue::DISCRETE(1));
-    /// assert_ne!(DimensionValue::DISCRETE(1), DimensionValue::DISCRETE(2));
-    /// assert_ne!(DimensionValue::DISCRETE(1), DimensionValue::CONTINUOUS(1.0));
-    /// assert_eq!(DimensionValue::CONTINUOUS(1.0), DimensionValue::CONTINUOUS(1.0));
-    /// assert_ne!(DimensionValue::CONTINUOUS(1.0), DimensionValue::CONTINUOUS(1.1));
+    /// # use gymnarium_base::{DimensionValue, DimensionValueI64F64};
+    /// let value = DimensionValueI64F64::discrete(4);
+    /// assert_eq!(
+    ///     DimensionValue::DISCRETE(4),
+    ///     value
+    /// );
+    /// ```
+    pub fn discrete(value: D) -> Self {
+        DimensionValue::DISCRETE(value)
+    }
+
+    /// Creates a new continuous DimensionValue.
+    ///
+    /// # Examples
+    /// ```
+    /// # use gymnarium_base::{DimensionValue, DimensionValueI64F64};
+    /// let value = DimensionValueI64F64::continuous(4.5);
+    /// assert_eq!(
+    ///     DimensionValue::CONTINUOUS(4.5),
+    ///     value
+    /// );
+    /// ```
+    pub fn continuous(value: C) -> Self {
+        DimensionValue::CONTINUOUS(value)
+    }
+
+    /// Creates a new value containing more values.
+    ///
+    /// # Examples
+    /// ```
+    /// # use gymnarium_base::{DimensionValue, DimensionValueI64F64};
+    /// let value = DimensionValueI64F64::multiple(vec![
+    ///     DimensionValueI64F64::discrete(1),
+    ///     DimensionValueI64F64::continuous(3.6),
+    ///     DimensionValueI64F64::multiple(vec![
+    ///         DimensionValueI64F64::discrete(7),
+    ///         DimensionValueI64F64::continuous(3.4)
+    ///     ])
+    /// ]);
+    ///
+    /// assert_eq!(
+    ///     DimensionValue::MULTIPLE(vec![
+    ///         DimensionValue::DISCRETE(1),
+    ///         DimensionValue::CONTINUOUS(3.6),
+    ///         DimensionValue::MULTIPLE(vec![
+    ///             DimensionValue::DISCRETE(7),
+    ///             DimensionValue::CONTINUOUS(3.4)
+    ///         ])
+    ///     ]),
+    ///     value
+    /// );
+    /// ```
+    pub fn multiple(values: Vec<DimensionValue<D, C>>) -> Self {
+        DimensionValue::MULTIPLE(values)
+    }
+
+    /// Checks if this and another DimensionValue have the same structure.
+    ///
+    /// Does not check if the values match!
+    /// # Examples
+    /// ```
+    /// # use gymnarium_base::{DimensionValue, DimensionValueI64F64};
+    /// let shape_a = DimensionValueI64F64::discrete(0);
+    /// assert!(shape_a.matches_shape_of(&shape_a));
+    ///
+    /// let shape_b = DimensionValueI64F64::continuous(22.8);
+    /// assert!(shape_b.matches_shape_of(&shape_b));
+    /// assert!(!shape_b.matches_shape_of(&shape_a));
+    ///
+    /// let shape_c = DimensionValueI64F64::multiple(vec![
+    ///     DimensionValueI64F64::discrete(10),
+    ///     DimensionValueI64F64::multiple(vec![
+    ///         DimensionValueI64F64::continuous(12.3),
+    ///         DimensionValueI64F64::continuous(-1.8)
+    ///     ])
+    /// ]);
+    /// assert!(shape_c.matches_shape_of(&shape_c));
+    /// assert!(!shape_c.matches_shape_of(&shape_a));
+    /// assert!(!shape_c.matches_shape_of(&shape_b));
+    ///
+    /// let shape_d = DimensionValueI64F64::continuous(9.7);
+    /// assert!(shape_d.matches_shape_of(&shape_d));
+    /// assert!(!shape_d.matches_shape_of(&shape_a));
+    /// assert!(shape_d.matches_shape_of(&shape_b));
+    /// assert!(!shape_d.matches_shape_of(&shape_c));
+    /// ```
+    pub fn matches_shape_of(&self, other: &DimensionValue<D, C>) -> bool {
+        match self {
+            DimensionValue::DISCRETE(_) => match other {
+                DimensionValue::DISCRETE(_) => true,
+                _ => false,
+            },
+            DimensionValue::CONTINUOUS(_) => match other {
+                DimensionValue::CONTINUOUS(_) => true,
+                _ => false,
+            },
+            DimensionValue::MULTIPLE(values) => match other {
+                DimensionValue::MULTIPLE(other_values) => {
+                    values.len() == other_values.len()
+                        && !values
+                            .iter()
+                            .zip(other_values.iter())
+                            .any(|(v, o)| !v.matches_shape_of(o))
+                }
+                _ => false,
+            },
+        }
+    }
+}
+
+impl<D: PrimInt + Debug, C: Float + Debug> PartialEq for DimensionValue<D, C> {
+    /// # Examples
+    /// ```
+    /// # use gymnarium_base::{DimensionValue, DimensionValueI64F64};
+    /// assert_eq!(DimensionValueI64F64::DISCRETE(1), DimensionValueI64F64::DISCRETE(1));
+    /// assert_ne!(DimensionValueI64F64::DISCRETE(1), DimensionValueI64F64::DISCRETE(2));
+    /// assert_ne!(DimensionValueI64F64::DISCRETE(1), DimensionValueI64F64::CONTINUOUS(1.0));
+    /// assert_eq!(DimensionValueI64F64::CONTINUOUS(1.0), DimensionValueI64F64::CONTINUOUS(1.0));
+    /// assert_ne!(DimensionValueI64F64::CONTINUOUS(1.0), DimensionValueI64F64::CONTINUOUS(1.1));
+    /// assert_ne!(DimensionValueI64F64::MULTIPLE(vec![DimensionValueI64F64::CONTINUOUS(1.1)]), DimensionValueI64F64::CONTINUOUS(1.1));
+    /// assert_eq!(
+    ///     DimensionValue::MULTIPLE(vec![DimensionValueI64F64::CONTINUOUS(3.8)]),
+    ///     DimensionValue::MULTIPLE(vec![DimensionValueI64F64::CONTINUOUS(3.8)])
+    /// );
     /// ```
     fn eq(&self, other: &Self) -> bool {
-        match *self {
-            DimensionValue::DISCRETE(i) => match *other {
+        match self {
+            DimensionValue::DISCRETE(i) => match other {
                 DimensionValue::DISCRETE(j) => i == j,
                 _ => false,
             },
-            DimensionValue::CONTINUOUS(f) => match *other {
+            DimensionValue::CONTINUOUS(f) => match other {
                 DimensionValue::CONTINUOUS(g) => f == g,
+                _ => false,
+            },
+            DimensionValue::MULTIPLE(values) => match other {
+                DimensionValue::MULTIPLE(other_values) => values == other_values,
                 _ => false,
             },
         }
@@ -35,12 +179,120 @@ impl PartialEq for DimensionValue {
 
 /// Inclusive boundaries of dimension values.
 #[derive(Debug, Clone)]
-pub enum DimensionBoundaries {
-    DISCRETE { minimum: i64, maximum: i64 },
-    CONTINUOUS { minimum: f64, maximum: f64 },
+pub enum DimensionBoundaries<D: PrimInt + Debug, C: Float + Debug> {
+    DISCRETE { minimum: D, maximum: D },
+    CONTINUOUS { minimum: C, maximum: C },
+    MULTIPLE(Vec<DimensionBoundaries<D, C>>),
 }
 
-impl DimensionBoundaries {
+/// Alias for DimensionBoundaries<i32, f32>
+pub type DimensionBoundariesI32F32 = DimensionBoundaries<i32, f32>;
+
+/// Alias for DimensionBoundaries<i64, f64>
+pub type DimensionBoundariesI64F64 = DimensionBoundaries<i64, f64>;
+
+/// Alias for DimensionBoundaries<u32, f32>
+pub type DimensionBoundariesU32F32 = DimensionBoundaries<u32, f32>;
+
+/// Alias for DimensionBoundaries<u64, f64>
+pub type DimensionBoundariesU64F64 = DimensionBoundaries<u64, f64>;
+
+impl<D: PrimInt + Debug, C: Float + Debug> DimensionBoundaries<D, C> {
+    /// Creates new discrete DimensionBoundaries with &#91;0;maximum&#93;.
+    ///
+    /// # Examples
+    /// ```
+    /// # use gymnarium_base::{DimensionBoundariesI64F64, DimensionBoundaries};
+    /// let boundaries = DimensionBoundariesI64F64::discrete_zero(4);
+    /// assert_eq!(
+    ///     DimensionBoundaries::DISCRETE { minimum: 0, maximum: 4 },
+    ///     boundaries
+    /// );
+    /// ```
+    pub fn discrete_zero(maximum: D) -> Self {
+        DimensionBoundaries::DISCRETE {
+            minimum: D::zero(),
+            maximum,
+        }
+    }
+
+    /// Creates new discrete DimensionBoundaries with &#91;minimum;maximum&#93;.
+    ///
+    /// # Examples
+    /// ```
+    /// # use gymnarium_base::{DimensionBoundaries, DimensionBoundariesI64F64};
+    /// let boundaries = DimensionBoundariesI64F64::discrete(-5, 4);
+    /// assert_eq!(
+    ///     DimensionBoundaries::DISCRETE { minimum: -5, maximum: 4 },
+    ///     boundaries
+    /// );
+    /// ```
+    pub fn discrete(minimum: D, maximum: D) -> Self {
+        DimensionBoundaries::DISCRETE { minimum, maximum }
+    }
+
+    /// Creates new continuous DimensionBoundaries with &#91;0;maximum&#93;.
+    ///
+    /// # Examples
+    /// ```
+    /// # use gymnarium_base::{DimensionBoundaries, DimensionBoundariesI64F64};
+    /// let boundaries = DimensionBoundariesI64F64::continuous_zero(12.4);
+    /// assert_eq!(
+    ///     DimensionBoundaries::CONTINUOUS { minimum: 0.0, maximum: 12.4 },
+    ///     boundaries
+    /// );
+    /// ```
+    pub fn continuous_zero(maximum: C) -> Self {
+        DimensionBoundaries::CONTINUOUS {
+            minimum: C::zero(),
+            maximum,
+        }
+    }
+
+    /// Creates new continuous DimensionBoundaries with &#91;minimum;maximum&#93;.
+    ///
+    /// # Examples
+    /// ```
+    /// # use gymnarium_base::{DimensionBoundaries, DimensionBoundariesI64F64};
+    /// let boundaries = DimensionBoundariesI64F64::continuous(-32.67, 12.4);
+    /// assert_eq!(
+    ///     DimensionBoundaries::CONTINUOUS { minimum: -32.67, maximum: 12.4 },
+    ///     boundaries
+    /// );
+    /// ```
+    pub fn continuous(minimum: C, maximum: C) -> Self {
+        DimensionBoundaries::CONTINUOUS { minimum, maximum }
+    }
+
+    /// Creates new DimensionBoundaries containing more boundaries.
+    ///
+    /// # Examples
+    /// ```
+    /// # use gymnarium_base::{DimensionBoundaries, DimensionBoundariesI64F64};
+    /// let boundaries = DimensionBoundariesI64F64::multiple(vec![
+    ///     DimensionBoundariesI64F64::continuous_zero(3.8),
+    ///     DimensionBoundariesI64F64::discrete_zero(3),
+    ///     DimensionBoundariesI64F64::multiple(vec![
+    ///         DimensionBoundariesI64F64::discrete(-1, -5),
+    ///         DimensionBoundariesI64F64::continuous(-3.2, -5.3)
+    ///     ])
+    /// ]);
+    /// assert_eq!(
+    ///     DimensionBoundaries::MULTIPLE(vec![
+    ///         DimensionBoundaries::CONTINUOUS { minimum: 0.0, maximum: 3.8 },
+    ///         DimensionBoundaries::DISCRETE { minimum: 0, maximum: 3 },
+    ///         DimensionBoundaries::MULTIPLE(vec![
+    ///             DimensionBoundaries::DISCRETE { minimum: -1, maximum: -5 },
+    ///             DimensionBoundaries::CONTINUOUS { minimum: -3.2, maximum: -5.3 }
+    ///         ])
+    ///     ]),
+    ///     boundaries
+    /// );
+    /// ```
+    pub fn multiple(values: Vec<DimensionBoundaries<D, C>>) -> Self {
+        DimensionBoundaries::MULTIPLE(values)
+    }
+
     /// Checks if a given DimensionValue is inclusively inside these minimum and maximum values.
     ///
     /// It is also able to compare DISCRETE values with CONTINUOUS boundaries.
@@ -49,69 +301,285 @@ impl DimensionBoundaries {
     /// # Examples
     ///
     /// ```
-    /// # use gymnarium_base::{DimensionBoundaries, DimensionValue};
-    /// let continuous_boundaries = DimensionBoundaries::CONTINUOUS {
+    /// # use gymnarium_base::{DimensionBoundariesI64F64, DimensionValueI64F64};
+    /// let continuous_boundaries = DimensionBoundariesI64F64::CONTINUOUS {
     ///     minimum: 1.0f64,
     ///     maximum: 1.5f64
     /// };
-    /// assert_eq!(true, continuous_boundaries.contains(&DimensionValue::CONTINUOUS(1.2f64)));
-    /// assert_eq!(true, continuous_boundaries.contains(&DimensionValue::DISCRETE(1)));
-    /// assert_eq!(false, continuous_boundaries.contains(&DimensionValue::DISCRETE(3)));
+    /// assert_eq!(true, continuous_boundaries.contains(&DimensionValueI64F64::CONTINUOUS(1.2f64)));
+    /// assert_eq!(true, continuous_boundaries.contains(&DimensionValueI64F64::DISCRETE(1)));
+    /// assert_eq!(false, continuous_boundaries.contains(&DimensionValueI64F64::DISCRETE(3)));
     ///
-    /// let discrete_boundaries = DimensionBoundaries::DISCRETE {
+    /// let discrete_boundaries = DimensionBoundariesI64F64::DISCRETE {
     ///     minimum: 1,
     ///     maximum: 2
     /// };
-    /// assert_eq!(false, discrete_boundaries.contains(&DimensionValue::CONTINUOUS(1.2f64)));
-    /// assert_eq!(true, discrete_boundaries.contains(&DimensionValue::DISCRETE(1)));
-    /// assert_eq!(false, discrete_boundaries.contains(&DimensionValue::DISCRETE(3)));
+    /// assert_eq!(false, discrete_boundaries.contains(&DimensionValueI64F64::CONTINUOUS(1.2f64)));
+    /// assert_eq!(true, discrete_boundaries.contains(&DimensionValueI64F64::DISCRETE(1)));
+    /// assert_eq!(false, discrete_boundaries.contains(&DimensionValueI64F64::DISCRETE(3)));
+    ///
+    /// let multiple_boundaries = DimensionBoundariesI64F64::MULTIPLE(vec![
+    ///     DimensionBoundariesI64F64::DISCRETE { minimum: 1, maximum: 5 },
+    ///     DimensionBoundariesI64F64::CONTINUOUS { minimum: -1.3, maximum: 6.7 }
+    /// ]);
+    /// assert_eq!(false, multiple_boundaries.contains(&DimensionValueI64F64::MULTIPLE(vec![
+    ///     DimensionValueI64F64::DISCRETE(7)
+    /// ])));
+    /// assert_eq!(true, multiple_boundaries.contains(&DimensionValueI64F64::MULTIPLE(vec![
+    ///     DimensionValueI64F64::DISCRETE(4),
+    ///     DimensionValueI64F64::CONTINUOUS(0.6)
+    /// ])));
+    /// assert_eq!(false, multiple_boundaries.contains(&DimensionValueI64F64::MULTIPLE(vec![
+    ///     DimensionValueI64F64::DISCRETE(4),
+    ///     DimensionValueI64F64::DISCRETE(-2)
+    /// ])));
     /// ```
-    pub fn contains(&self, value: &DimensionValue) -> bool {
+    pub fn contains(&self, value: &DimensionValue<D, C>) -> bool {
         match self {
-            Self::DISCRETE { minimum, maximum } => match value {
+            DimensionBoundaries::DISCRETE { minimum, maximum } => match value {
                 DimensionValue::DISCRETE(val) => minimum <= val && val <= maximum,
                 DimensionValue::CONTINUOUS(val) => {
-                    if (val.floor() - *val).abs() < std::f64::EPSILON {
-                        *minimum <= val.floor() as i64 && val.ceil() as i64 <= *maximum
+                    if C::abs(val.floor().sub(*val)) < C::epsilon() {
+                        minimum.to_i64().unwrap() <= val.floor().to_i64().unwrap()
+                            && val.ceil().to_i64().unwrap() <= maximum.to_i64().unwrap()
                     } else {
                         false
                     }
                 }
+                _ => false,
             },
-            Self::CONTINUOUS { minimum, maximum } => match value {
+            DimensionBoundaries::CONTINUOUS { minimum, maximum } => match value {
                 DimensionValue::CONTINUOUS(val) => minimum <= val && val <= maximum,
-                DimensionValue::DISCRETE(val) => *minimum <= *val as f64 && *val as f64 <= *maximum,
+                DimensionValue::DISCRETE(val) => {
+                    minimum.to_f64().unwrap() <= val.to_f64().unwrap()
+                        && val.to_f64().unwrap() <= maximum.to_f64().unwrap()
+                }
+                _ => false,
             },
+            DimensionBoundaries::MULTIPLE(values) => match value {
+                DimensionValue::MULTIPLE(other_values) => {
+                    values.len() == other_values.len()
+                        && values
+                            .iter()
+                            .zip(other_values.iter())
+                            .find(|(bound, val)| !bound.contains(val))
+                            .is_none()
+                }
+                _ => false,
+            },
+        }
+    }
+
+    /// Checks if this boundaries shape matches the shape of the other DimensionValues.
+    /// # Examples
+    /// ```
+    /// # use gymnarium_base::{DimensionBoundariesI64F64, DimensionValueI64F64};
+    /// let boundaries_shape_a = DimensionBoundariesI64F64::discrete_zero(10);
+    /// let boundaries_shape_b = DimensionBoundariesI64F64::continuous_zero(3.7);
+    /// let boundaries_shape_c = DimensionBoundariesI64F64::multiple(vec![
+    ///     DimensionBoundariesI64F64::continuous(3.3, 3.4),
+    ///     DimensionBoundariesI64F64::discrete_zero(33)
+    /// ]);
+    /// let boundaries_shape_d = DimensionBoundariesI64F64::continuous(-3.5, 4.9);
+    ///
+    /// let value_shape_a = DimensionValueI64F64::discrete(22);
+    /// assert!(boundaries_shape_a.matches_shape_for(&value_shape_a));
+    /// assert!(!boundaries_shape_b.matches_shape_for(&value_shape_a));
+    /// assert!(!boundaries_shape_c.matches_shape_for(&value_shape_a));
+    /// assert!(!boundaries_shape_d.matches_shape_for(&value_shape_a));
+    ///
+    /// let value_shape_b = DimensionValueI64F64::continuous(100.4);
+    /// assert!(!boundaries_shape_a.matches_shape_for(&value_shape_b));
+    /// assert!(boundaries_shape_b.matches_shape_for(&value_shape_b));
+    /// assert!(!boundaries_shape_c.matches_shape_for(&value_shape_b));
+    /// assert!(boundaries_shape_d.matches_shape_for(&value_shape_b));
+    ///
+    /// let value_shape_c = DimensionValueI64F64::multiple(vec![
+    ///     DimensionValueI64F64::continuous(-5.0),
+    ///     DimensionValueI64F64::discrete(40)
+    /// ]);
+    /// assert!(!boundaries_shape_a.matches_shape_for(&value_shape_c));
+    /// assert!(!boundaries_shape_b.matches_shape_for(&value_shape_c));
+    /// assert!(boundaries_shape_c.matches_shape_for(&value_shape_c));
+    /// assert!(!boundaries_shape_d.matches_shape_for(&value_shape_c));
+    ///
+    /// let value_shape_d = DimensionValueI64F64::multiple(vec![
+    ///     DimensionValueI64F64::continuous(-5.0),
+    ///     DimensionValueI64F64::multiple(vec![
+    ///         DimensionValueI64F64::discrete(22),
+    ///         DimensionValueI64F64::continuous(12.3)
+    ///     ])
+    /// ]);
+    /// assert!(!boundaries_shape_a.matches_shape_for(&value_shape_d));
+    /// assert!(!boundaries_shape_b.matches_shape_for(&value_shape_d));
+    /// assert!(!boundaries_shape_c.matches_shape_for(&value_shape_d));
+    /// assert!(!boundaries_shape_d.matches_shape_for(&value_shape_d));
+    /// ```
+    pub fn matches_shape_for(&self, other: &DimensionValue<D, C>) -> bool {
+        match self {
+            DimensionBoundaries::DISCRETE { .. } => match other {
+                DimensionValue::DISCRETE(_) => true,
+                _ => false,
+            },
+            DimensionBoundaries::CONTINUOUS { .. } => match other {
+                DimensionValue::CONTINUOUS(_) => true,
+                _ => false,
+            },
+            DimensionBoundaries::MULTIPLE(boundaries) => match other {
+                DimensionValue::MULTIPLE(values) => {
+                    boundaries.len() == values.len()
+                        && !boundaries
+                            .iter()
+                            .zip(values.iter())
+                            .any(|(b, c)| !b.matches_shape_for(c))
+                }
+                _ => false,
+            },
+        }
+    }
+
+    /// Checks if this boundaries shape matches the other boundaries shape.
+    /// # Examples
+    /// ```
+    /// # use gymnarium_base::DimensionBoundariesI64F64;
+    /// let shape_a = DimensionBoundariesI64F64::discrete_zero(10);
+    /// assert!(shape_a.matches_shape_of(&shape_a));
+    ///
+    /// let shape_b = DimensionBoundariesI64F64::continuous_zero(3.7);
+    /// assert!(shape_b.matches_shape_of(&shape_b));
+    /// assert!(!shape_b.matches_shape_of(&shape_a));
+    ///
+    /// let shape_c = DimensionBoundariesI64F64::multiple(vec![
+    ///     DimensionBoundariesI64F64::continuous(3.3, 3.4),
+    ///     DimensionBoundariesI64F64::discrete_zero(33)
+    /// ]);
+    /// assert!(shape_c.matches_shape_of(&shape_c));
+    /// assert!(!shape_c.matches_shape_of(&shape_a));
+    /// assert!(!shape_c.matches_shape_of(&shape_b));
+    ///
+    /// let shape_d = DimensionBoundariesI64F64::continuous(-3.5, 4.9);
+    /// assert!(shape_d.matches_shape_of(&shape_d));
+    /// assert!(!shape_d.matches_shape_of(&shape_a));
+    /// assert!(shape_d.matches_shape_of(&shape_b));
+    /// assert!(!shape_d.matches_shape_of(&shape_c));
+    /// ```
+    pub fn matches_shape_of(&self, other: &DimensionBoundaries<D, C>) -> bool {
+        match self {
+            DimensionBoundaries::DISCRETE { .. } => match other {
+                DimensionBoundaries::DISCRETE { .. } => true,
+                _ => false,
+            },
+            DimensionBoundaries::CONTINUOUS { .. } => match other {
+                DimensionBoundaries::CONTINUOUS { .. } => true,
+                _ => false,
+            },
+            DimensionBoundaries::MULTIPLE(boundaries) => match other {
+                DimensionBoundaries::MULTIPLE(other_boundaries) => {
+                    boundaries.len() == other_boundaries.len()
+                        && !boundaries
+                            .iter()
+                            .zip(other_boundaries.iter())
+                            .any(|(b, o)| !b.matches_shape_of(o))
+                }
+                _ => false,
+            },
+        }
+    }
+
+    /// Returns a sample value within these boundaries.
+    /// # Examples
+    /// ```
+    /// # use gymnarium_base::{DimensionBoundaries, DimensionBoundariesI64F64, DimensionValue, DimensionValueI64F64};
+    /// let discrete_boundaries = DimensionBoundariesI64F64::discrete_zero(10);
+    /// let sampled_value = discrete_boundaries.sample(&|min, max| 5, &|min, max| 0f64);
+    /// assert_eq!(DimensionValueI64F64::DISCRETE(5i64), sampled_value);
+    ///
+    /// let continuous_boundaries = DimensionBoundariesI64F64::continuous_zero(2.5);
+    /// let sampled_value = continuous_boundaries.sample(&|min, max| 0, &|min, max| 1.7f64);
+    /// assert_eq!(DimensionValueI64F64::CONTINUOUS(1.7f64), sampled_value);
+    ///
+    /// let continuous_boundaries = DimensionBoundariesI64F64::multiple(vec![
+    ///     DimensionBoundariesI64F64::discrete_zero(20),
+    ///     DimensionBoundariesI64F64::continuous_zero(4.8f64),
+    ///     DimensionBoundariesI64F64::multiple(vec![
+    ///         DimensionBoundariesI64F64::discrete(5, 7),
+    ///         DimensionBoundariesI64F64::continuous(-1.2, -0.2)
+    ///     ]),
+    /// ]);
+    /// let sampled_value = continuous_boundaries.sample(&|min, max| ((max-min)/2)+min, &|min, max| ((max-min)/2f64)+min);
+    /// assert_eq!(DimensionValueI64F64::MULTIPLE(vec![
+    ///     DimensionValueI64F64::discrete(10),
+    ///     DimensionValueI64F64::continuous(2.4f64),
+    ///     DimensionValueI64F64::multiple(vec![
+    ///         DimensionValueI64F64::discrete(6),
+    ///         DimensionValueI64F64::continuous(-0.7)
+    ///     ])
+    /// ]), sampled_value);
+    /// ```
+    pub fn sample<FD: Fn(&D, &D) -> D, FC: Fn(&C, &C) -> C>(
+        &self,
+        discrete_random_provider: &FD,
+        continuous_random_provider: &FC,
+    ) -> DimensionValue<D, C> {
+        match self {
+            DimensionBoundaries::DISCRETE { minimum, maximum } => {
+                DimensionValue::DISCRETE(discrete_random_provider(minimum, maximum))
+            }
+            DimensionBoundaries::CONTINUOUS { minimum, maximum } => {
+                DimensionValue::CONTINUOUS(continuous_random_provider(minimum, maximum))
+            }
+            DimensionBoundaries::MULTIPLE(boundaries) => DimensionValue::MULTIPLE(
+                boundaries
+                    .iter()
+                    .map(|b| b.sample(discrete_random_provider, continuous_random_provider))
+                    .collect::<Vec<DimensionValue<D, C>>>(),
+            ),
         }
     }
 }
 
-impl PartialEq for DimensionBoundaries {
+impl<D: PrimInt + Debug, C: Float + Debug> PartialEq for DimensionBoundaries<D, C> {
     /// ```
-    /// # use gymnarium_base::DimensionBoundaries;
+    /// # use gymnarium_base::{DimensionBoundaries, DimensionBoundariesI64F64};
     /// assert_eq!(
-    ///     DimensionBoundaries::DISCRETE {minimum: 1, maximum: 2},
-    ///     DimensionBoundaries::DISCRETE {minimum: 1, maximum: 2}
+    ///     DimensionBoundariesI64F64::DISCRETE {minimum: 1, maximum: 2},
+    ///     DimensionBoundariesI64F64::DISCRETE {minimum: 1, maximum: 2}
     /// );
     /// assert_eq!(
-    ///     DimensionBoundaries::CONTINUOUS {minimum: 1.5, maximum: 3.3},
-    ///     DimensionBoundaries::CONTINUOUS {minimum: 1.5, maximum: 3.3}
+    ///     DimensionBoundariesI64F64::CONTINUOUS {minimum: 1.5, maximum: 3.3},
+    ///     DimensionBoundariesI64F64::CONTINUOUS {minimum: 1.5, maximum: 3.3}
+    /// );
+    /// assert_eq!(
+    ///     DimensionBoundariesI64F64::MULTIPLE(vec![
+    ///         DimensionBoundariesI64F64::DISCRETE { minimum: 3, maximum: 6 }
+    ///     ]),
+    ///     DimensionBoundariesI64F64::MULTIPLE(vec![
+    ///         DimensionBoundariesI64F64::DISCRETE { minimum: 3, maximum: 6 }
+    ///     ])
     /// );
     /// assert_ne!(
-    ///     DimensionBoundaries::DISCRETE {minimum: 1, maximum: 2},
-    ///     DimensionBoundaries::CONTINUOUS {minimum: 1.5, maximum: 3.3}
+    ///     DimensionBoundariesI64F64::DISCRETE {minimum: 1, maximum: 2},
+    ///     DimensionBoundariesI64F64::CONTINUOUS {minimum: 1.5, maximum: 3.3}
     /// );
     /// assert_ne!(
-    ///     DimensionBoundaries::DISCRETE {minimum: 1, maximum: 2},
-    ///     DimensionBoundaries::DISCRETE {minimum: 2, maximum: 3}
+    ///     DimensionBoundariesI64F64::DISCRETE {minimum: 1, maximum: 2},
+    ///     DimensionBoundariesI64F64::DISCRETE {minimum: 2, maximum: 3}
+    /// );
+    /// assert_ne!(
+    ///     DimensionBoundariesI64F64::MULTIPLE(vec![
+    ///         DimensionBoundariesI64F64::DISCRETE { minimum: 3, maximum: 6 }
+    ///     ]),
+    ///     DimensionBoundariesI64F64::MULTIPLE(vec![
+    ///         DimensionBoundariesI64F64::CONTINUOUS { minimum: 3.0, maximum: 6.6 }
+    ///     ])
     /// );
     /// ```
     fn eq(&self, other: &Self) -> bool {
-        match *self {
+        match self {
             DimensionBoundaries::DISCRETE {
                 minimum: self_minimum,
                 maximum: self_maximum,
-            } => match *other {
+            } => match other {
                 DimensionBoundaries::DISCRETE {
                     minimum: other_minimum,
                     maximum: other_maximum,
@@ -121,132 +589,422 @@ impl PartialEq for DimensionBoundaries {
             DimensionBoundaries::CONTINUOUS {
                 minimum: self_minimum,
                 maximum: self_maximum,
-            } => match *other {
+            } => match other {
                 DimensionBoundaries::CONTINUOUS {
                     minimum: other_minimum,
                     maximum: other_maximum,
                 } => self_minimum == other_minimum && self_maximum == other_maximum,
                 _ => false,
             },
+            DimensionBoundaries::MULTIPLE(values) => match other {
+                DimensionBoundaries::MULTIPLE(other_values) => values == other_values,
+                _ => false,
+            },
+        }
+    }
+}
+
+/// Defines a position within a Space. Used for AgentAction and EnvironmentState.
+/// # Examples
+/// ```
+/// # use gymnarium_base::{Space, SpacePosition, DimensionValueI64F64, DimensionValue, DimensionBoundaries, DimensionBoundariesI64F64};
+/// let action_space = Space::from(vec![
+///     DimensionBoundariesI64F64::discrete_zero(25),
+///     DimensionBoundariesI64F64::continuous_zero(3.0),
+/// ]);
+/// let agent_action = SpacePosition::from(vec![
+///     DimensionValueI64F64::discrete(20),
+///     DimensionValueI64F64::continuous(2.3)
+/// ]);
+/// ```
+#[derive(Debug, Default)]
+pub struct SpacePosition<D: PrimInt + Debug, C: Float + Debug> {
+    data: Vec<DimensionValue<D, C>>,
+}
+
+impl<D: PrimInt + Debug, C: Float + Debug> SpacePosition<D, C> {
+    /// Checks if the shape of this position matches with the other one.
+    /// # Examples
+    /// ```
+    /// # use gymnarium_base::{SpacePosition, DimensionValueI64F64};
+    /// let position_a = SpacePosition::from(DimensionValueI64F64::discrete(20));
+    /// assert!(position_a.matches_shape_of(&position_a));
+    ///
+    /// let position_b = SpacePosition::from(DimensionValueI64F64::continuous(1.98));
+    /// assert!(position_b.matches_shape_of(&position_b));
+    /// assert!(!position_b.matches_shape_of(&position_a));
+    ///
+    /// let position_c = SpacePosition::from(DimensionValueI64F64::multiple(vec![
+    ///     DimensionValueI64F64::discrete(6),
+    ///     DimensionValueI64F64::continuous(4.3),
+    /// ]));
+    /// assert!(position_c.matches_shape_of(&position_c));
+    /// assert!(!position_c.matches_shape_of(&position_a));
+    /// assert!(!position_c.matches_shape_of(&position_b));
+    ///
+    /// let position_d = SpacePosition::from(DimensionValueI64F64::discrete(1));
+    /// assert!(position_d.matches_shape_of(&position_d));
+    /// assert!(position_d.matches_shape_of(&position_a));
+    /// assert!(!position_d.matches_shape_of(&position_b));
+    /// assert!(!position_d.matches_shape_of(&position_c));
+    /// ```
+    pub fn matches_shape_of(&self, other: &SpacePosition<D, C>) -> bool {
+        if self.data.len() != other.data.len() {
+            false
+        } else {
+            !self
+                .data
+                .iter()
+                .zip(other.data.iter())
+                .any(|(s, o)| !s.matches_shape_of(o))
+        }
+    }
+}
+
+impl<D: PrimInt + Debug, C: Float + Debug> From<DimensionValue<D, C>> for SpacePosition<D, C> {
+    fn from(values: DimensionValue<D, C>) -> Self {
+        Self { data: vec![values] }
+    }
+}
+
+impl<D: PrimInt + Debug, C: Float + Debug> From<Vec<DimensionValue<D, C>>> for SpacePosition<D, C> {
+    fn from(values: Vec<DimensionValue<D, C>>) -> Self {
+        Self { data: values }
+    }
+}
+
+impl<D: PrimInt + Debug, C: Float + Debug> Into<Vec<DimensionValue<D, C>>> for SpacePosition<D, C> {
+    fn into(self) -> Vec<DimensionValue<D, C>> {
+        self.data
+    }
+}
+
+impl<D: PrimInt + Debug, C: Float + Debug> PartialEq for SpacePosition<D, C> {
+    /// # Examples
+    /// ```
+    /// use gymnarium_base::{SpacePosition, DimensionValueI64F64};
+    /// let space_position_a = SpacePosition::from(DimensionValueI64F64::discrete(10));
+    /// assert_eq!(space_position_a, space_position_a);
+    ///
+    /// let space_position_b = SpacePosition::from(DimensionValueI64F64::continuous(3.5));
+    /// assert_eq!(space_position_b, space_position_b);
+    /// assert_ne!(space_position_b, space_position_a);
+    ///
+    /// let space_position_c = SpacePosition::from(vec![
+    ///     DimensionValueI64F64::multiple(vec![
+    ///         DimensionValueI64F64::discrete(5),
+    ///         DimensionValueI64F64::continuous(3.4),
+    ///     ]),
+    ///     DimensionValueI64F64::discrete(7)
+    /// ]);
+    /// assert_eq!(space_position_c, space_position_c);
+    /// assert_ne!(space_position_c, space_position_a);
+    /// assert_ne!(space_position_c, space_position_b);
+    ///
+    /// let space_position_d = SpacePosition::from(DimensionValueI64F64::continuous(3.5));
+    /// assert_eq!(space_position_d, space_position_d);
+    /// assert_ne!(space_position_d, space_position_a);
+    /// assert_eq!(space_position_d, space_position_b);
+    /// assert_ne!(space_position_d, space_position_c);
+    /// ```
+    fn eq(&self, other: &Self) -> bool {
+        if self.data.len() != other.data.len() {
+            false
+        } else {
+            !self.data.iter().zip(other.data.iter()).any(|(s, o)| s != o)
+        }
+    }
+}
+
+/// Contains the ActionSpace and EnvironmentSpace of environments.
+///
+/// ## Examples
+/// ### Single value
+/// ```
+/// # use gymnarium_base::{Space, DimensionBoundaries, DimensionBoundariesI64F64};
+/// let single_discrete_value = Space::from(DimensionBoundariesI64F64::discrete_zero(2));
+/// let single_continuous_value = Space::from(DimensionBoundariesI64F64::continuous(1.5, 3.7));
+/// ```
+/// ### Multiple values
+/// ```
+/// # use gymnarium_base::{Space, DimensionBoundaries, DimensionBoundariesI64F64};
+/// let multiple_discrete_values = Space::from(vec![
+///     DimensionBoundariesI64F64::discrete_zero(2),
+///     DimensionBoundariesI64F64::discrete_zero(5)
+/// ]);
+/// let multiple_continuous_values = Space::from(vec![
+///     DimensionBoundariesI64F64::continuous(1.5, 3.7),
+///     DimensionBoundariesI64F64::continuous(1.5, 3.7)
+/// ]);
+/// let multiple_different_values = Space::from(vec![
+///     DimensionBoundariesI64F64::continuous(1.5, 3.7),
+///     DimensionBoundariesI64F64::discrete_zero(8),
+///     DimensionBoundariesI64F64::continuous_zero(3.7)
+/// ]);
+/// ```
+#[derive(Debug)]
+pub struct Space<D: PrimInt + Debug, C: Float + Debug> {
+    data: Vec<DimensionBoundaries<D, C>>,
+}
+
+impl<D: PrimInt + Debug, C: Float + Debug> Space<D, C> {
+    /// Checks if this space shape matches the SpacePosition shape.
+    /// # Examples
+    /// ```
+    /// # use gymnarium_base::{Space, DimensionBoundariesI64F64, SpacePosition, DimensionValueI64F64};
+    /// let space_a = Space::from(DimensionBoundariesI64F64::discrete_zero(20));
+    /// let space_b = Space::from(DimensionBoundariesI64F64::continuous(1.2, 1.8));
+    /// let space_c = Space::from(vec![
+    ///     DimensionBoundariesI64F64::multiple(vec![
+    ///         DimensionBoundariesI64F64::continuous_zero(34.3),
+    ///         DimensionBoundariesI64F64::continuous(1.0, 1.1)
+    ///     ]),
+    ///     DimensionBoundariesI64F64::discrete_zero(4)
+    /// ]);
+    /// let space_d = Space::from(DimensionBoundariesI64F64::discrete(0, 1));
+    ///
+    /// let position_a = SpacePosition::from(DimensionValueI64F64::discrete(300));
+    /// assert!(space_a.matches_shape_for(&position_a));
+    /// assert!(!space_b.matches_shape_for(&position_a));
+    /// assert!(!space_c.matches_shape_for(&position_a));
+    /// assert!(space_d.matches_shape_for(&position_a));
+    ///
+    /// let position_b = SpacePosition::from(DimensionValueI64F64::continuous(-20.5));
+    /// assert!(!space_a.matches_shape_for(&position_b));
+    /// assert!(space_b.matches_shape_for(&position_b));
+    /// assert!(!space_c.matches_shape_for(&position_b));
+    /// assert!(!space_d.matches_shape_for(&position_b));
+    ///
+    /// let position_c = SpacePosition::from(vec![
+    ///     DimensionValueI64F64::multiple(vec![
+    ///         DimensionValueI64F64::continuous(99.9),
+    ///         DimensionValueI64F64::continuous(-5.3)
+    ///     ]),
+    ///     DimensionValueI64F64::discrete(7)
+    /// ]);
+    /// assert!(!space_a.matches_shape_for(&position_c));
+    /// assert!(!space_b.matches_shape_for(&position_c));
+    /// assert!(space_c.matches_shape_for(&position_c));
+    /// assert!(!space_d.matches_shape_for(&position_c));
+    /// ```
+    pub fn matches_shape_for(&self, position: &SpacePosition<D, C>) -> bool {
+        if self.data.len() != position.data.len() {
+            false
+        } else {
+            !self
+                .data
+                .iter()
+                .zip(position.data.iter())
+                .any(|(s, o)| !s.matches_shape_for(o))
+        }
+    }
+
+    /// Checks if this space shape matches the other one.
+    /// # Examples
+    /// ```
+    /// # use gymnarium_base::{Space, DimensionBoundariesI64F64};
+    /// let space_a = Space::from(DimensionBoundariesI64F64::discrete_zero(20));
+    /// assert!(space_a.matches_shape_of(&space_a));
+    ///
+    /// let space_b = Space::from(DimensionBoundariesI64F64::continuous(1.2, 1.8));
+    /// assert!(space_b.matches_shape_of(&space_b));
+    /// assert!(!space_b.matches_shape_of(&space_a));
+    ///
+    /// let space_c = Space::from(vec![
+    ///     DimensionBoundariesI64F64::multiple(vec![
+    ///         DimensionBoundariesI64F64::continuous_zero(34.3),
+    ///         DimensionBoundariesI64F64::continuous(1.0, 1.1)
+    ///     ]),
+    ///     DimensionBoundariesI64F64::discrete_zero(4)
+    /// ]);
+    /// assert!(space_c.matches_shape_of(&space_c));
+    /// assert!(!space_c.matches_shape_of(&space_a));
+    /// assert!(!space_c.matches_shape_of(&space_b));
+    ///
+    /// let space_d = Space::from(DimensionBoundariesI64F64::discrete(0, 1));
+    /// assert!(space_d.matches_shape_of(&space_d));
+    /// assert!(space_d.matches_shape_of(&space_a));
+    /// assert!(!space_d.matches_shape_of(&space_b));
+    /// assert!(!space_d.matches_shape_of(&space_c));
+    /// ```
+    pub fn matches_shape_of(&self, other: &Space<D, C>) -> bool {
+        if self.data.len() != other.data.len() {
+            false
+        } else {
+            !self
+                .data
+                .iter()
+                .zip(other.data.iter())
+                .any(|(s, o)| !s.matches_shape_of(o))
+        }
+    }
+
+    /// Checks if the position is contained within this space.
+    /// # Examples
+    /// ```
+    /// # use gymnarium_base::{Space, DimensionBoundariesI64F64, SpacePosition, DimensionValueI64F64};
+    /// let space_a = Space::from(DimensionBoundariesI64F64::discrete_zero(10));
+    ///
+    /// let position_a = SpacePosition::from(DimensionValueI64F64::discrete(8));
+    /// assert!(space_a.contains(&position_a));
+    ///
+    /// let position_b = SpacePosition::from(DimensionValueI64F64::discrete(12));
+    /// assert!(!space_a.contains(&position_b));
+    ///
+    /// let position_c = SpacePosition::from(DimensionValueI64F64::continuous(8.5));
+    /// assert!(!space_a.contains(&position_c));
+    ///
+    ///
+    /// let space_b = Space::from(vec![
+    ///     DimensionBoundariesI64F64::discrete_zero(20),
+    ///     DimensionBoundariesI64F64::continuous_zero(90.0),
+    ///     DimensionBoundariesI64F64::multiple(vec![
+    ///         DimensionBoundariesI64F64::discrete(5, 10),
+    ///         DimensionBoundariesI64F64::continuous(5.5, 6.5)
+    ///     ])
+    /// ]);
+    /// assert!(!space_b.contains(&position_a));
+    /// assert!(!space_b.contains(&position_b));
+    /// assert!(!space_b.contains(&position_c));
+    ///
+    /// let position_d = SpacePosition::from(vec![
+    ///     DimensionValueI64F64::discrete(8),
+    ///     DimensionValueI64F64::continuous(8.9)
+    /// ]);
+    /// assert!(!space_b.contains(&position_d));
+    ///
+    /// let position_e = SpacePosition::from(vec![
+    ///     DimensionValueI64F64::discrete(8),
+    ///     DimensionValueI64F64::continuous(8.9),
+    ///     DimensionValueI64F64::multiple(vec![
+    ///         DimensionValueI64F64::discrete(7),
+    ///         DimensionValueI64F64::continuous(6.0),
+    ///     ])
+    /// ]);
+    /// assert!(space_b.contains(&position_e));
+    /// ```
+    pub fn contains(&self, position: &SpacePosition<D, C>) -> bool {
+        if self.data.len() != position.data.len() {
+            false
+        } else {
+            !self
+                .data
+                .iter()
+                .zip(position.data.iter())
+                .any(|(s, p)| !s.contains(p))
+        }
+    }
+
+    /// Returns a sample position within this space.
+    /// # Examples
+    /// ```
+    /// # use gymnarium_base::{DimensionBoundariesI64F64, Space, SpacePosition, DimensionValueI64F64};
+    /// let discrete_space = Space::from(DimensionBoundariesI64F64::discrete_zero(10));
+    /// let sampled_value = discrete_space.sample(&|min, max| 5, &|min, max| 0f64);
+    /// assert_eq!(SpacePosition::from(DimensionValueI64F64::discrete(5)), sampled_value);
+    ///
+    /// let continuous_space = Space::from(DimensionBoundariesI64F64::continuous_zero(2.5));
+    /// let sampled_value = continuous_space.sample(&|min, max| 0, &|min, max| 1.7f64);
+    /// assert_eq!(SpacePosition::from(DimensionValueI64F64::continuous(1.7)), sampled_value);
+    ///
+    /// let multiple_space = Space::from(DimensionBoundariesI64F64::multiple(vec![
+    ///     DimensionBoundariesI64F64::discrete_zero(20),
+    ///     DimensionBoundariesI64F64::continuous_zero(4.8f64),
+    ///     DimensionBoundariesI64F64::multiple(vec![
+    ///         DimensionBoundariesI64F64::discrete(5, 7),
+    ///         DimensionBoundariesI64F64::continuous(-1.2, -0.2)
+    ///     ]),
+    /// ]));
+    /// let sampled_value = multiple_space.sample(&|min, max| ((max-min)/2)+min, &|min, max| ((max-min)/2f64)+min);
+    /// assert_eq!(SpacePosition::from(DimensionValueI64F64::MULTIPLE(vec![
+    ///     DimensionValueI64F64::discrete(10),
+    ///     DimensionValueI64F64::continuous(2.4f64),
+    ///     DimensionValueI64F64::multiple(vec![
+    ///         DimensionValueI64F64::discrete(6),
+    ///         DimensionValueI64F64::continuous(-0.7)
+    ///     ])
+    /// ])), sampled_value);
+    /// ```
+    pub fn sample<FD: Fn(&D, &D) -> D, FC: Fn(&C, &C) -> C>(
+        &self,
+        discrete_random_provider: &FD,
+        continuous_random_provider: &FC,
+    ) -> SpacePosition<D, C> {
+        SpacePosition::from(
+            self.data
+                .iter()
+                .map(|b| b.sample(discrete_random_provider, continuous_random_provider))
+                .collect::<Vec<DimensionValue<D, C>>>(),
+        )
+    }
+}
+
+impl<D: PrimInt + Debug, C: Float + Debug> From<DimensionBoundaries<D, C>> for Space<D, C> {
+    fn from(data: DimensionBoundaries<D, C>) -> Self {
+        Self { data: vec![data] }
+    }
+}
+
+impl<D: PrimInt + Debug, C: Float + Debug> From<Vec<DimensionBoundaries<D, C>>> for Space<D, C> {
+    fn from(data: Vec<DimensionBoundaries<D, C>>) -> Self {
+        Self { data }
+    }
+}
+
+impl<D: PrimInt + Debug, C: Float + Debug> Into<Vec<DimensionBoundaries<D, C>>> for Space<D, C> {
+    fn into(self) -> Vec<DimensionBoundaries<D, C>> {
+        self.data
+    }
+}
+
+impl<D: PrimInt + Debug, C: Float + Debug> PartialEq for Space<D, C> {
+    /// # Examples
+    /// ```
+    /// use gymnarium_base::{Space, DimensionBoundariesI64F64};
+    /// let space_position_a = Space::from(DimensionBoundariesI64F64::discrete_zero(10));
+    /// assert_eq!(space_position_a, space_position_a);
+    ///
+    /// let space_position_b = Space::from(DimensionBoundariesI64F64::continuous_zero(3.5));
+    /// assert_eq!(space_position_b, space_position_b);
+    /// assert_ne!(space_position_b, space_position_a);
+    ///
+    /// let space_position_c = Space::from(vec![
+    ///     DimensionBoundariesI64F64::multiple(vec![
+    ///         DimensionBoundariesI64F64::discrete_zero(5),
+    ///         DimensionBoundariesI64F64::continuous_zero(3.4),
+    ///     ]),
+    ///     DimensionBoundariesI64F64::discrete_zero(7)
+    /// ]);
+    /// assert_eq!(space_position_c, space_position_c);
+    /// assert_ne!(space_position_c, space_position_a);
+    /// assert_ne!(space_position_c, space_position_b);
+    ///
+    /// let space_position_d = Space::from(DimensionBoundariesI64F64::continuous_zero(3.5));
+    /// assert_eq!(space_position_d, space_position_d);
+    /// assert_ne!(space_position_d, space_position_a);
+    /// assert_eq!(space_position_d, space_position_b);
+    /// assert_ne!(space_position_d, space_position_c);
+    /// ```
+    fn eq(&self, other: &Self) -> bool {
+        if self.data.len() != other.data.len() {
+            false
+        } else {
+            !self.data.iter().zip(other.data.iter()).any(|(s, o)| s != o)
         }
     }
 }
 
 /// List of dimension boundaries for the observable environment state.
-pub type ObservationSpace = Vec<DimensionBoundaries>;
+pub type ObservationSpace<D, C> = Space<D, C>;
 
 /// List of dimension values as the observable environment state.
-pub type EnvironmentState = Vec<DimensionValue>;
+pub type EnvironmentState<D, C> = SpacePosition<D, C>;
 
 /// List of dimension values as the agent action.
-pub type AgentAction = Vec<DimensionValue>;
-
-/// Error used for function `action_space_contains_agent_action`.
-#[derive(Debug, PartialEq)]
-pub enum AgentActionSpaceComparisonError {
-    MismatchedSizes {
-        action_space_size: usize,
-        agent_action_size: usize,
-    },
-    ActionInvalid {
-        index: usize,
-    },
-}
-
-impl std::fmt::Display for AgentActionSpaceComparisonError {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        match self {
-            AgentActionSpaceComparisonError::MismatchedSizes {
-                action_space_size,
-                agent_action_size,
-            } => write!(
-                f,
-                "Given action ({}) does not match expected length ({})",
-                agent_action_size, action_space_size
-            ),
-            AgentActionSpaceComparisonError::ActionInvalid { index } => {
-                write!(f, "action[{}] is invalid", index)
-            }
-        }
-    }
-}
-
-impl std::error::Error for AgentActionSpaceComparisonError {}
+pub type AgentAction<D, C> = SpacePosition<D, C>;
 
 /// List of dimension boundaries for available environment agent actions.
-pub type ActionSpace = Vec<DimensionBoundaries>;
-
-/// Checks whether a AgentAction is inside a ActionSpace returning Ok if inside and all errors if outside
-///
-/// # Examples
-/// ```
-/// # use gymnarium_base::{
-/// #     ActionSpace,
-/// #     DimensionBoundaries,
-/// #     DimensionValue,
-/// #     action_space_contains_agent_action,
-/// #     AgentActionSpaceComparisonError
-/// # };
-/// let action_space = vec!(
-///     DimensionBoundaries::DISCRETE { minimum: -5, maximum: 4 },
-///     DimensionBoundaries::CONTINUOUS { minimum: 10.5, maximum: 10.9 }
-/// );
-///
-/// assert!(action_space_contains_agent_action(&action_space, &vec!(
-///     DimensionValue::DISCRETE(0),
-///     DimensionValue::CONTINUOUS(10.6)
-/// )).is_ok());
-///
-/// assert_eq!(
-///     Err(vec!(AgentActionSpaceComparisonError::MismatchedSizes {
-///         action_space_size: 2, agent_action_size: 1
-///     })),
-///     action_space_contains_agent_action(&action_space, &vec!(
-///         DimensionValue::DISCRETE(0)
-///     ))
-/// );
-///
-/// assert_eq!(
-///     Err(vec!(AgentActionSpaceComparisonError::ActionInvalid {
-///         index: 1
-///     })),
-///     action_space_contains_agent_action(&action_space, &vec!(
-///         DimensionValue::DISCRETE(0),
-///         DimensionValue::DISCRETE(10)
-///     ))
-/// );
-/// ```
-pub fn action_space_contains_agent_action(
-    action_space: &ActionSpace,
-    agent_action: &AgentAction,
-) -> Result<(), Vec<AgentActionSpaceComparisonError>> {
-    if action_space.len() != agent_action.len() {
-        Err(vec![AgentActionSpaceComparisonError::MismatchedSizes {
-            action_space_size: action_space.len(),
-            agent_action_size: agent_action.len(),
-        }])
-    } else {
-        let k = action_space
-            .iter()
-            .zip(agent_action.iter())
-            .zip(0..action_space.len())
-            .map(|((boundaries, value), index)| {
-                if boundaries.contains(value) {
-                    None
-                } else {
-                    Some(AgentActionSpaceComparisonError::ActionInvalid { index })
-                }
-            })
-            .filter(|o| o.is_some())
-            .map(|o| o.unwrap())
-            .collect::<Vec<AgentActionSpaceComparisonError>>();
-        if k.is_empty() {
-            Ok(())
-        } else {
-            Err(k)
-        }
-    }
-}
+pub type ActionSpace<D, C> = Space<D, C>;
 
 /// Provides conversion from various values into acceptable seed values.
 pub struct Seed {
@@ -425,12 +1183,12 @@ impl Into<u64> for Seed {
 }
 
 /// Base trait for an environment.
-pub trait Environment<E: std::error::Error> {
+pub trait Environment<E: std::error::Error, I: Debug, D: PrimInt + Debug, C: Float + Debug> {
     /// Returns the available boundaries for the actions for this environment.
-    fn action_space(&self) -> ActionSpace;
+    fn action_space(&self) -> ActionSpace<D, C>;
 
     /// Returns the boundaries for the observable states for this environment.
-    fn observation_space(&self) -> ObservationSpace;
+    fn observation_space(&self) -> ObservationSpace<D, C>;
 
     /// Returns the suggested episode step count if the environment provides one.
     fn suggested_episode_steps_count(&self) -> Option<u128>;
@@ -441,10 +1199,13 @@ pub trait Environment<E: std::error::Error> {
     /// Otherwise there might be no or an invalid state.
     ///
     /// Optionally a seed can be given to initialise the internal random number generator.
-    fn reset(&mut self, random_seed: Option<Seed>) -> Result<EnvironmentState, E>;
+    fn reset(&mut self, random_seed: Option<Seed>) -> Result<EnvironmentState<D, C>, E>;
 
     /// Performs a step within this environment with the given agent action
-    fn step(&mut self, action: &AgentAction) -> Result<(EnvironmentState, f64, bool), E>;
+    fn step(
+        &mut self,
+        action: &AgentAction<D, C>,
+    ) -> Result<(EnvironmentState<D, C>, f64, bool, I), E>;
 
     /// Cleans up resources of this environment.
     ///
@@ -453,7 +1214,7 @@ pub trait Environment<E: std::error::Error> {
 }
 
 /// Base trait for an agent.
-pub trait Agent<E: std::error::Error> {
+pub trait Agent<E: std::error::Error, D: PrimInt + Debug, C: Float + Debug> {
     /// Resets the state and initial resources of the agent.
     ///
     /// Should be called even before the first step is done.
@@ -463,13 +1224,13 @@ pub trait Agent<E: std::error::Error> {
     fn reset(&mut self, random_seed: Option<Seed>) -> Result<(), E>;
 
     /// Returns an action based on the environment state given.
-    fn choose_action(&self, state: &EnvironmentState) -> Result<AgentAction, E>;
+    fn choose_action(&mut self, state: &EnvironmentState<D, C>) -> Result<AgentAction<D, C>, E>;
 
     /// Lets this agent process the result of the last step.
     fn process_reward(
         &mut self,
-        old_state: &EnvironmentState,
-        new_state: &EnvironmentState,
+        old_state: &EnvironmentState<D, C>,
+        new_state: &EnvironmentState<D, C>,
         reward: f64,
         is_done: bool,
     ) -> Result<(), E>;
