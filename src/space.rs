@@ -448,7 +448,7 @@ impl Format {
 /* --- --- --- SPACE --- --- --- */
 
 /// Defines a space in which states or positions can be placed.
-#[derive(Debug, PartialEq, Clone)]
+#[derive(Default, Debug, PartialEq, Clone)]
 pub struct Space {
     boundaries: Vec<DimensionBoundaries>,
     dimensions: Vec<usize>
@@ -543,7 +543,7 @@ impl Space {
 /* --- --- --- POSITION --- --- --- */
 
 /// Defines the state or position inside a space.
-#[derive(Debug, PartialEq, Clone)]
+#[derive(Default, Debug, PartialEq, Clone)]
 pub struct Position {
     values: Vec<DimensionValue>,
     dimensions: Vec<usize>,
