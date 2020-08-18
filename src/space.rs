@@ -529,14 +529,16 @@ impl Space {
         }
     }
 
-    pub fn contains(&self, position: &Position) -> bool {
-        if self.dimensions == position.dimensions {
-            self.boundaries.iter()
-                .zip(position.values.iter())
-                .any(|(boundaries, value)| boundaries.contains(value))
-        } else {
-            false
-        }
+    pub fn matches(&self, other: &Space) -> bool {
+        self.dimensions == other.dimensions && self.boundaries.iter()
+            .zip(other.boundaries.iter())
+            .any(|(a, b)| !a.matches(b))
+    }
+
+    pub fn contains(&self, other: &Position) -> bool {
+        self.dimensions == other.dimensions && self.boundaries.iter()
+            .zip(other.values.iter())
+            .any(|(boundaries, value)| boundaries.contains(value))
     }
 }
 
@@ -584,6 +586,11 @@ impl Position {
         &self.dimensions
     }
 
+    pub fn matches(&self, other: &Position) -> bool {
+        self.dimensions == other.dimensions && self.values.iter().zip(other.values.iter())
+            .any(|(a, b)| !a.matches(b))
+    }
+
     pub fn get_value(&self, index: &[usize]) -> Result<&DimensionValue, SpaceError> {
         let index = calculate_index(self.dimensions(), index)?;
         Ok(&self.values[index])
@@ -625,15 +632,27 @@ impl DimensionBoundaries {
         }
     }
 
+    pub fn matches(&self, value: &DimensionBoundaries) -> bool {
+        match self {
+            Self::INTEGER(_, _) => match value {
+                Self::INTEGER(_, _) => true,
+                Self::FLOAT(_, _) => false,
+            },
+            Self::FLOAT(_, _) => match value {
+                Self::INTEGER(_, _) => false,
+                Self::FLOAT(_, _) => true,
+            }
+        }
+    }
+
     pub fn contains(&self, value: &DimensionValue) -> bool {
         match self {
             Self::INTEGER(min, max) => match value {
                 DimensionValue::INTEGER(val) => *min <= *val && *val <= *max,
-                DimensionValue::FLOAT(val) => ((*val as i32) as f32 - *val).abs() < f32::EPSILON &&
-                    *min <= *val as i32 && *val as i32 <= *max,
+                DimensionValue::FLOAT(_) => false,
             },
             Self::FLOAT(min, max) => match value {
-                DimensionValue::INTEGER(val) => *min <= *val as f32 && *val as f32 <= *max,
+                DimensionValue::INTEGER(_) => false,
                 DimensionValue::FLOAT(val) => *min <= *val && *val <= *max,
             }
         }
@@ -687,6 +706,21 @@ impl From<RangeInclusive<f32>> for DimensionBoundaries {
 pub enum DimensionValue {
     INTEGER(i32),
     FLOAT(f32),
+}
+
+impl DimensionValue {
+    pub fn matches(&self, value: &DimensionValue) -> bool {
+        match self {
+            Self::INTEGER(_) => match value {
+                Self::INTEGER(_) => true,
+                Self::FLOAT(_) => false,
+            },
+            Self::FLOAT(_) => match value {
+                Self::INTEGER(_) => false,
+                Self::FLOAT(_) => true,
+            }
+        }
+    }
 }
 
 /* i32 */

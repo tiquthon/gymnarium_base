@@ -206,13 +206,13 @@ where
     I: Debug,
 {
     /// Returns the available boundaries for the actions for this environment.
-    fn action_space(&self) -> ActionSpace;
+    fn action_space() -> ActionSpace;
 
     /// Returns the boundaries for the observable states for this environment.
-    fn observation_space(&self) -> ObservationSpace;
+    fn observation_space() -> ObservationSpace;
 
     /// Returns the suggested episode step count if the environment provides one.
-    fn suggested_episode_steps_count(&self) -> Option<u128>;
+    fn suggested_episode_steps_count() -> Option<u128>;
 
     /// Resets a possible internal random number generator with the given seed or by entropy.
     fn reseed(&mut self, random_seed: Option<Seed>) -> Result<(), E>;
