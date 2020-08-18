@@ -214,13 +214,16 @@ where
     /// Returns the suggested episode step count if the environment provides one.
     fn suggested_episode_steps_count(&self) -> Option<u128>;
 
+    /// Resets a possible internal random number generator with the given seed or by entropy.
+    fn reseed(&mut self, random_seed: Option<Seed>) -> Result<(), E>;
+
     /// Resets the state and initial resources of the environment and returns the initial state.
     ///
     /// Should be called even before the first step is done.
     /// Otherwise there might be no or an invalid state.
     ///
-    /// Optionally a seed can be given to initialise the internal random number generator.
-    fn reset(&mut self, random_seed: Option<Seed>) -> Result<EnvironmentState, E>;
+    /// If predictable behaviour is wished, it's recommended to call `seed` in front of `reset`.
+    fn reset(&mut self) -> Result<EnvironmentState, E>;
 
     /// Performs a step within this environment with the given agent action
     fn step(&mut self, action: &AgentAction) -> Result<(EnvironmentState, f64, bool, I), E>;
@@ -236,13 +239,16 @@ pub trait Agent<E>
 where
     E: std::error::Error,
 {
+    /// Resets a possible internal random number generator with the given seed or by entropy.
+    fn reseed(&mut self, random_seed: Option<Seed>) -> Result<(), E>;
+
     /// Resets the state and initial resources of the agent.
     ///
     /// Should be called even before the first step is done.
     /// Otherwise the agent could be in an invalid state.
     ///
-    /// Optionally a seed can be given to initialise the internal random number generator.
-    fn reset(&mut self, random_seed: Option<Seed>) -> Result<(), E>;
+    /// If predictable behaviour is wished, it's recommended to call `seed` in front of `reset`.
+    fn reset(&mut self) -> Result<(), E>;
 
     /// Returns an action based on the environment state given.
     fn choose_action(&mut self, state: &EnvironmentState) -> Result<AgentAction, E>;
