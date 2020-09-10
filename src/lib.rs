@@ -199,6 +199,11 @@ impl Into<u64> for Seed {
     }
 }
 
+/// Base trait for any structure mapping something to [`AgentAction`]s.
+pub trait ToActionMapper<I: Clone, E: std::error::Error> {
+    fn map(&mut self, input: &I) -> Result<AgentAction, E>;
+}
+
 /// Base trait for an environment.
 pub trait Environment<E, I>
 where

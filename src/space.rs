@@ -305,6 +305,10 @@ pub struct Format {
 }
 
 impl Format {
+    /* Allowing clippy::map_entry, because if the key exists a error should be returned.
+     * Map_entry does not provide such way or I didn't see that.
+     */
+    #[allow(clippy::map_entry)]
     pub fn add(&mut self, key: String, shape: Vec<usize>) -> Result<(), FormatError> {
         if self.v.contains_key(&key) {
             Err(FormatError::KeyAlreadyExistsInFormat(key))
