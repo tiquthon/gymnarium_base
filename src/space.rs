@@ -256,10 +256,7 @@ pub enum FormatError {
     KeyNotFoundInFormat(String),
     SpaceCreationError(SpaceError),
     PositionCreationError(SpaceError),
-    GivenSpaceDoesNotFit {
-        needed: usize,
-        given: usize,
-    },
+    GivenSpaceDoesNotFit { needed: usize, given: usize },
     SpaceIndexError(SpaceError),
     PositionIndexError(SpaceError),
 }
@@ -267,13 +264,35 @@ pub enum FormatError {
 impl std::fmt::Display for FormatError {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
-            Self::KeyAlreadyExistsInFormat(key) => write!(f, "Key \"{}\" has already been added to this format", key),
+            Self::KeyAlreadyExistsInFormat(key) => {
+                write!(f, "Key \"{}\" has already been added to this format", key)
+            }
             Self::KeyNotFoundInFormat(key) => write!(f, "Key \"{}\" not found in format", key),
-            Self::SpaceCreationError(space_error) => write!(f, "Space Error \"{}\" occurred while creation of space", space_error),
-            Self::PositionCreationError(space_error) => write!(f, "Space Error \"{}\" occurred while creation of position", space_error),
-            Self::GivenSpaceDoesNotFit{ needed, given } => write!(f, "Given space ({}) does not fit needed ({})", given, needed),
-            Self::SpaceIndexError(space_error) => write!(f, "Space Error \"{}\" occurred while indexing of space", space_error),
-            Self::PositionIndexError(space_error) => write!(f, "Space Error \"{}\" occurred while indexing of position", space_error),
+            Self::SpaceCreationError(space_error) => write!(
+                f,
+                "Space Error \"{}\" occurred while creation of space",
+                space_error
+            ),
+            Self::PositionCreationError(space_error) => write!(
+                f,
+                "Space Error \"{}\" occurred while creation of position",
+                space_error
+            ),
+            Self::GivenSpaceDoesNotFit { needed, given } => write!(
+                f,
+                "Given space ({}) does not fit needed ({})",
+                given, needed
+            ),
+            Self::SpaceIndexError(space_error) => write!(
+                f,
+                "Space Error \"{}\" occurred while indexing of space",
+                space_error
+            ),
+            Self::PositionIndexError(space_error) => write!(
+                f,
+                "Space Error \"{}\" occurred while indexing of position",
+                space_error
+            ),
         }
     }
 }
@@ -292,7 +311,7 @@ impl SubFormat {
         Self {
             offset,
             shape,
-            length
+            length,
         }
     }
 }
@@ -343,14 +362,18 @@ impl Format {
             for index in sf.offset..(sf.offset + sf.length) {
                 space_values.push(space.boundaries[index]);
             }
-            Space::new(space_values, sf.shape.clone())
-                .map_err(FormatError::SpaceCreationError)
+            Space::new(space_values, sf.shape.clone()).map_err(FormatError::SpaceCreationError)
         } else {
             Err(FormatError::KeyNotFoundInFormat(key.to_string()))
         }
     }
 
-    pub fn set_subspace(&self, space: &mut Space, key: &str, subspace: Space) -> Result<(), FormatError> {
+    pub fn set_subspace(
+        &self,
+        space: &mut Space,
+        key: &str,
+        subspace: Space,
+    ) -> Result<(), FormatError> {
         let subformat = self.v.get(key);
         if let Some(sf) = subformat {
             if subspace.boundaries.len() == sf.length {
@@ -359,9 +382,9 @@ impl Format {
                 }
                 Ok(())
             } else {
-                Err(FormatError::GivenSpaceDoesNotFit{
+                Err(FormatError::GivenSpaceDoesNotFit {
                     needed: sf.length,
-                    given: subspace.boundaries.len()
+                    given: subspace.boundaries.len(),
                 })
             }
         } else {
@@ -369,22 +392,33 @@ impl Format {
         }
     }
 
-    pub fn get_boundaries<'a>(&self, space: &'a Space, key: &str, index: &[usize]) -> Result<&'a DimensionBoundaries, FormatError> {
+    pub fn get_boundaries<'a>(
+        &self,
+        space: &'a Space,
+        key: &str,
+        index: &[usize],
+    ) -> Result<&'a DimensionBoundaries, FormatError> {
         let subformat = self.v.get(key);
         if let Some(sf) = subformat {
-            let current_index = calculate_index(&sf.shape, index)
-                .map_err(FormatError::SpaceIndexError)?;
+            let current_index =
+                calculate_index(&sf.shape, index).map_err(FormatError::SpaceIndexError)?;
             Ok(&space.boundaries[sf.offset + current_index])
         } else {
             Err(FormatError::KeyNotFoundInFormat(key.to_string()))
         }
     }
 
-    pub fn set_boundaries(&self, space: &mut Space, key: &str, index: &[usize], boundaries: DimensionBoundaries) -> Result<(), FormatError> {
+    pub fn set_boundaries(
+        &self,
+        space: &mut Space,
+        key: &str,
+        index: &[usize],
+        boundaries: DimensionBoundaries,
+    ) -> Result<(), FormatError> {
         let subformat = self.v.get(key);
         if let Some(sf) = subformat {
-            let current_index = calculate_index(&sf.shape, index)
-                .map_err(FormatError::SpaceIndexError)?;
+            let current_index =
+                calculate_index(&sf.shape, index).map_err(FormatError::SpaceIndexError)?;
             space.boundaries[sf.offset + current_index] = boundaries;
             Ok(())
         } else {
@@ -406,7 +440,12 @@ impl Format {
         }
     }
 
-    pub fn set_subposition(&self, position: &mut Position, key: &str, subposition: Position) -> Result<(), FormatError> {
+    pub fn set_subposition(
+        &self,
+        position: &mut Position,
+        key: &str,
+        subposition: Position,
+    ) -> Result<(), FormatError> {
         let subformat = self.v.get(key);
         if let Some(sf) = subformat {
             if subposition.values.len() == sf.length {
@@ -425,22 +464,33 @@ impl Format {
         }
     }
 
-    pub fn get_value<'a>(&self, position: &'a Position, key: &str, index: &[usize]) -> Result<&'a DimensionValue, FormatError> {
+    pub fn get_value<'a>(
+        &self,
+        position: &'a Position,
+        key: &str,
+        index: &[usize],
+    ) -> Result<&'a DimensionValue, FormatError> {
         let subformat = self.v.get(key);
         if let Some(sf) = subformat {
-            let current_index = calculate_index(&sf.shape, index)
-                .map_err(FormatError::PositionIndexError)?;
+            let current_index =
+                calculate_index(&sf.shape, index).map_err(FormatError::PositionIndexError)?;
             Ok(&position.values[sf.offset + current_index])
         } else {
             Err(FormatError::KeyNotFoundInFormat(key.to_string()))
         }
     }
 
-    pub fn set_value(&self, position: &mut Position, key: &str, index: &[usize], value: DimensionValue) -> Result<(), FormatError> {
+    pub fn set_value(
+        &self,
+        position: &mut Position,
+        key: &str,
+        index: &[usize],
+        value: DimensionValue,
+    ) -> Result<(), FormatError> {
         let subformat = self.v.get(key);
         if let Some(sf) = subformat {
-            let current_index = calculate_index(&sf.shape, index)
-                .map_err(FormatError::PositionIndexError)?;
+            let current_index =
+                calculate_index(&sf.shape, index).map_err(FormatError::PositionIndexError)?;
             position.values[sf.offset + current_index] = value;
             Ok(())
         } else {
@@ -455,17 +505,18 @@ impl Format {
 #[derive(Default, Debug, PartialEq, Clone)]
 pub struct Space {
     boundaries: Vec<DimensionBoundaries>,
-    dimensions: Vec<usize>
+    dimensions: Vec<usize>,
 }
 
 impl Space {
     pub fn new(
-        dimension_boundaries: Vec<DimensionBoundaries>, dimensions: Vec<usize>
+        dimension_boundaries: Vec<DimensionBoundaries>,
+        dimensions: Vec<usize>,
     ) -> Result<Self, SpaceError> {
         if dimensions.iter().product::<usize>() == dimension_boundaries.len() {
             Ok(Self {
                 boundaries: dimension_boundaries,
-                dimensions
+                dimensions,
             })
         } else {
             Err(SpaceError::GivenDimensionsDoNotMatch)
@@ -474,10 +525,8 @@ impl Space {
 
     pub fn all(dimension_boundaries: DimensionBoundaries, dimensions: Vec<usize>) -> Self {
         Self {
-            boundaries: vec![
-                dimension_boundaries; dimensions.iter().product()
-            ],
-            dimensions
+            boundaries: vec![dimension_boundaries; dimensions.iter().product()],
+            dimensions,
         }
     }
 
@@ -485,14 +534,14 @@ impl Space {
         let length = dimension_boundaries.len();
         Self {
             boundaries: dimension_boundaries,
-            dimensions: vec![length]
+            dimensions: vec![length],
         }
     }
 
     pub fn simple_all(dimension_boundaries: DimensionBoundaries, times: usize) -> Self {
         Self {
             boundaries: vec![dimension_boundaries; times],
-            dimensions: vec![times]
+            dimensions: vec![times],
         }
     }
 
@@ -505,7 +554,11 @@ impl Space {
         Ok(&self.boundaries[index])
     }
 
-    pub fn set_boundary(&mut self, index: &[usize], boundary: DimensionBoundaries) -> Result<(), SpaceError> {
+    pub fn set_boundary(
+        &mut self,
+        index: &[usize],
+        boundary: DimensionBoundaries,
+    ) -> Result<(), SpaceError> {
         let index = calculate_index(self.dimensions(), index)?;
         self.boundaries[index] = boundary;
         Ok(())
@@ -517,7 +570,9 @@ impl Space {
 
     pub fn sample(&self) -> Position {
         Position {
-            values: self.boundaries.iter()
+            values: self
+                .boundaries
+                .iter()
                 .map(|boundaries| boundaries.sample())
                 .collect(),
             dimensions: self.dimensions.clone(),
@@ -526,7 +581,9 @@ impl Space {
 
     pub fn sample_with<R: Rng + ?Sized>(&self, rng: &mut R) -> Position {
         Position {
-            values: self.boundaries.iter()
+            values: self
+                .boundaries
+                .iter()
                 .map(|boundaries| boundaries.sample_with(rng))
                 .collect(),
             dimensions: self.dimensions.clone(),
@@ -534,15 +591,21 @@ impl Space {
     }
 
     pub fn matches(&self, other: &Space) -> bool {
-        self.dimensions == other.dimensions && self.boundaries.iter()
-            .zip(other.boundaries.iter())
-            .any(|(a, b)| !a.matches(b))
+        self.dimensions == other.dimensions
+            && self
+                .boundaries
+                .iter()
+                .zip(other.boundaries.iter())
+                .any(|(a, b)| !a.matches(b))
     }
 
     pub fn contains(&self, other: &Position) -> bool {
-        self.dimensions == other.dimensions && self.boundaries.iter()
-            .zip(other.values.iter())
-            .any(|(boundaries, value)| boundaries.contains(value))
+        self.dimensions == other.dimensions
+            && self
+                .boundaries
+                .iter()
+                .zip(other.values.iter())
+                .any(|(boundaries, value)| boundaries.contains(value))
     }
 }
 
@@ -556,7 +619,10 @@ pub struct Position {
 }
 
 impl Position {
-    pub fn new(dimension_values: Vec<DimensionValue>, dimensions: Vec<usize>) -> Result<Self, SpaceError> {
+    pub fn new(
+        dimension_values: Vec<DimensionValue>,
+        dimensions: Vec<usize>,
+    ) -> Result<Self, SpaceError> {
         if dimensions.iter().product::<usize>() == dimension_values.len() {
             Ok(Self {
                 values: dimension_values,
@@ -569,21 +635,24 @@ impl Position {
 
     pub fn all(dimension_value: DimensionValue, dimensions: Vec<usize>) -> Self {
         Self {
-            values: vec![
-                dimension_value;
-                dimensions.iter().product()
-            ],
+            values: vec![dimension_value; dimensions.iter().product()],
             dimensions,
         }
     }
 
     pub fn simple(dimension_values: Vec<DimensionValue>) -> Self {
         let dimension_values_length = dimension_values.len();
-        Self { values: dimension_values, dimensions: vec![dimension_values_length] }
+        Self {
+            values: dimension_values,
+            dimensions: vec![dimension_values_length],
+        }
     }
 
     pub fn simple_all(dimension_value: DimensionValue, times: usize) -> Self {
-        Self { values: vec![dimension_value; times], dimensions: vec![times] }
+        Self {
+            values: vec![dimension_value; times],
+            dimensions: vec![times],
+        }
     }
 
     pub fn dimensions(&self) -> &Vec<usize> {
@@ -591,8 +660,12 @@ impl Position {
     }
 
     pub fn matches(&self, other: &Position) -> bool {
-        self.dimensions == other.dimensions && self.values.iter().zip(other.values.iter())
-            .any(|(a, b)| !a.matches(b))
+        self.dimensions == other.dimensions
+            && self
+                .values
+                .iter()
+                .zip(other.values.iter())
+                .any(|(a, b)| !a.matches(b))
     }
 
     pub fn get_value(&self, index: &[usize]) -> Result<&DimensionValue, SpaceError> {
@@ -627,12 +700,12 @@ impl DimensionBoundaries {
 
     pub fn sample_with<R: Rng + ?Sized>(&self, rng: &mut R) -> DimensionValue {
         match self {
-            Self::INTEGER(min, max) => DimensionValue::INTEGER(
-                Uniform::new_inclusive(min, max).sample(rng)
-            ),
-            Self::FLOAT(min, max) => DimensionValue::FLOAT(
-                Uniform::new_inclusive(min, max).sample(rng)
-            ),
+            Self::INTEGER(min, max) => {
+                DimensionValue::INTEGER(Uniform::new_inclusive(min, max).sample(rng))
+            }
+            Self::FLOAT(min, max) => {
+                DimensionValue::FLOAT(Uniform::new_inclusive(min, max).sample(rng))
+            }
         }
     }
 
@@ -645,7 +718,7 @@ impl DimensionBoundaries {
             Self::FLOAT(_, _) => match value {
                 Self::INTEGER(_, _) => false,
                 Self::FLOAT(_, _) => true,
-            }
+            },
         }
     }
 
@@ -658,7 +731,7 @@ impl DimensionBoundaries {
             Self::FLOAT(min, max) => match value {
                 DimensionValue::INTEGER(_) => false,
                 DimensionValue::FLOAT(val) => *min <= *val && *val <= *max,
-            }
+            },
         }
     }
 }
@@ -667,10 +740,7 @@ impl DimensionBoundaries {
 
 impl From<i32> for DimensionBoundaries {
     fn from(value: i32) -> Self {
-        Self::INTEGER(
-            0.min(value),
-            0.max(value)
-        )
+        Self::INTEGER(0.min(value), 0.max(value))
     }
 }
 
@@ -687,10 +757,7 @@ impl From<RangeInclusive<i32>> for DimensionBoundaries {
 
 impl From<f32> for DimensionBoundaries {
     fn from(value: f32) -> Self {
-        Self::FLOAT(
-            0f32.min(value),
-            0f32.max(value)
-        )
+        Self::FLOAT(0f32.min(value), 0f32.max(value))
     }
 }
 
@@ -722,7 +789,7 @@ impl DimensionValue {
             Self::FLOAT(_) => match value {
                 Self::INTEGER(_) => false,
                 Self::FLOAT(_) => true,
-            }
+            },
         }
     }
 }
