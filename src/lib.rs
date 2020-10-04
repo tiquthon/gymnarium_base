@@ -3,8 +3,11 @@
 //! `gymnarium_base` is a collection of structs, traits and enums to support creating
 //! reinforcement environments like the python package `gym`.
 
+#![feature(iterator_fold_self)]
+
 extern crate rand;
 
+pub mod math;
 pub mod space;
 
 use std::fmt::Debug;
