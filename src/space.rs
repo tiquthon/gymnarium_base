@@ -206,7 +206,7 @@
 
 use std::collections::HashMap;
 
-use std::ops::RangeInclusive;
+use std::ops::{Index, IndexMut, RangeInclusive};
 
 use rand::distributions::{Distribution, Uniform};
 use rand::Rng;
@@ -549,19 +549,12 @@ impl Space {
         &self.dimensions
     }
 
-    pub fn get_boundary(&self, index: &[usize]) -> Result<&DimensionBoundaries, SpaceError> {
-        let index = calculate_index(self.dimensions(), index)?;
-        Ok(&self.boundaries[index])
+    pub fn get_boundary(&self, index: &[usize]) -> &DimensionBoundaries {
+        &self[index]
     }
 
-    pub fn set_boundary(
-        &mut self,
-        index: &[usize],
-        boundary: DimensionBoundaries,
-    ) -> Result<(), SpaceError> {
-        let index = calculate_index(self.dimensions(), index)?;
-        self.boundaries[index] = boundary;
-        Ok(())
+    pub fn set_boundary(&mut self, index: &[usize], boundary: DimensionBoundaries) {
+        self[index] = boundary;
     }
 
     pub fn get_boundaries(&self) -> &[DimensionBoundaries] {
@@ -606,6 +599,30 @@ impl Space {
                 .iter()
                 .zip(other.values.iter())
                 .any(|(boundaries, value)| boundaries.contains(value))
+    }
+}
+
+impl Index<&[usize]> for Space {
+    type Output = DimensionBoundaries;
+
+    fn index(&self, index: &[usize]) -> &Self::Output {
+        let index = calculate_index(self.dimensions(), index)
+            .unwrap_or_else(|e| panic!(
+                "Could not calculate inner index for position with dimensions {:?} and given index {:?} (cause: {})",
+                self.dimensions, index, e
+            ));
+        &self.boundaries[index]
+    }
+}
+
+impl IndexMut<&[usize]> for Space {
+    fn index_mut(&mut self, index: &[usize]) -> &mut Self::Output {
+        let index = calculate_index(self.dimensions(), index)
+            .unwrap_or_else(|e| panic!(
+                "Could not calculate inner index for position with dimensions {:?} and given index {:?} (cause: {})",
+                self.dimensions, index, e
+            ));
+        &mut self.boundaries[index]
     }
 }
 
@@ -668,19 +685,40 @@ impl Position {
                 .any(|(a, b)| !a.matches(b))
     }
 
-    pub fn get_value(&self, index: &[usize]) -> Result<&DimensionValue, SpaceError> {
-        let index = calculate_index(self.dimensions(), index)?;
-        Ok(&self.values[index])
+    pub fn get_value(&self, index: &[usize]) -> &DimensionValue {
+        &self[index]
     }
 
-    pub fn set_value(&mut self, index: &[usize], value: DimensionValue) -> Result<(), SpaceError> {
-        let index = calculate_index(self.dimensions(), index)?;
-        self.values[index] = value;
-        Ok(())
+    pub fn set_value(&mut self, index: &[usize], value: DimensionValue) {
+        self[index] = value;
     }
 
     pub fn get_values(&self) -> &[DimensionValue] {
         &self.values
+    }
+}
+
+impl Index<&[usize]> for Position {
+    type Output = DimensionValue;
+
+    fn index(&self, index: &[usize]) -> &Self::Output {
+        let index = calculate_index(self.dimensions(), index)
+            .unwrap_or_else(|e| panic!(
+                "Could not calculate inner index for position with dimensions {:?} and given index {:?} (cause: {})",
+                self.dimensions, index, e
+            ));
+        &self.values[index]
+    }
+}
+
+impl IndexMut<&[usize]> for Position {
+    fn index_mut(&mut self, index: &[usize]) -> &mut Self::Output {
+        let index = calculate_index(self.dimensions(), index)
+            .unwrap_or_else(|e| panic!(
+                "Could not calculate inner index for position with dimensions {:?} and given index {:?} (cause: {})",
+                self.dimensions, index, e
+            ));
+        &mut self.values[index]
     }
 }
 
@@ -732,6 +770,22 @@ impl DimensionBoundaries {
                 DimensionValue::INTEGER(_) => false,
                 DimensionValue::FLOAT(val) => *min <= *val && *val <= *max,
             },
+        }
+    }
+
+    pub fn expect_integer(&self) -> (i32, i32) {
+        if let Self::INTEGER(start, end) = self {
+            (*start, *end)
+        } else {
+            panic!("{:?} is not INTEGER as expected", self);
+        }
+    }
+
+    pub fn expect_float(&self) -> (f32, f32) {
+        if let Self::FLOAT(start, end) = self {
+            (*start, *end)
+        } else {
+            panic!("{:?} is not FLOAT as expected", self);
         }
     }
 }
@@ -790,6 +844,22 @@ impl DimensionValue {
                 Self::INTEGER(_) => false,
                 Self::FLOAT(_) => true,
             },
+        }
+    }
+
+    pub fn expect_integer(&self) -> i32 {
+        if let Self::INTEGER(value) = self {
+            *value
+        } else {
+            panic!("{:?} is not INTEGER as expected", self);
+        }
+    }
+
+    pub fn expect_float(&self) -> f32 {
+        if let Self::FLOAT(value) = self {
+            *value
+        } else {
+            panic!("{:?} is not FLOAT as expected", self);
         }
     }
 }
