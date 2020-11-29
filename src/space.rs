@@ -127,7 +127,7 @@
 //! }
 //! ```
 //!
-//! *(Source: [https://github.com/openai/gym/blob/master/gym/spaces/dict.py](https://github.com/openai/gym/blob/master/gym/spaces/dict.py))*
+//! *(Source: <https://github.com/openai/gym/blob/master/gym/spaces/dict.py>)*
 //!
 //! This structure can be defined with a format like:
 //!

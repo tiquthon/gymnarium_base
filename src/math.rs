@@ -1,9 +1,11 @@
 use std::ops::{Add, AddAssign, Div, DivAssign, Mul, MulAssign, Neg, Sub, SubAssign};
 
+use serde::{Deserialize, Serialize};
+
 /* --- --- --- Position2D --- --- --- */
 
 /// A position inside the two dimensional space.
-#[derive(Debug, Copy, Clone, PartialEq)]
+#[derive(Debug, Copy, Clone, PartialEq, Serialize, Deserialize)]
 pub struct Position2D {
     pub x: f64,
     pub y: f64,
@@ -81,7 +83,7 @@ impl SubAssign<Vector2D> for Position2D {
 /* --- --- --- Position3D --- --- --- */
 
 /// A position inside the three dimensional space.
-#[derive(Debug, Copy, Clone, PartialEq)]
+#[derive(Debug, Copy, Clone, PartialEq, Serialize, Deserialize)]
 pub struct Position3D {
     pub x: f64,
     pub y: f64,
@@ -212,7 +214,7 @@ impl SubAssign<Vector3D> for Position3D {
 /* --- --- --- Vector2D --- --- --- */
 
 /// A vector inside the two dimensional space.
-#[derive(Debug, Copy, Clone, PartialEq)]
+#[derive(Debug, Copy, Clone, PartialEq, Serialize, Deserialize)]
 pub struct Vector2D {
     pub x: f64,
     pub y: f64,
@@ -362,7 +364,7 @@ impl Neg for Vector2D {
 /* --- --- --- Vector3D --- --- --- */
 
 /// A vector inside the three dimensional space.
-#[derive(Debug, Copy, Clone, PartialEq)]
+#[derive(Debug, Copy, Clone, PartialEq, Serialize, Deserialize)]
 pub struct Vector3D {
     pub x: f64,
     pub y: f64,
@@ -534,7 +536,7 @@ impl Neg for Vector3D {
 /* --- --- --- Size2D --- --- --- */
 
 /// A size inside the two dimensional space.
-#[derive(Debug, Copy, Clone, PartialEq)]
+#[derive(Debug, Copy, Clone, PartialEq, Serialize, Deserialize)]
 pub struct Size2D {
     pub width: f64,
     pub height: f64,
@@ -570,7 +572,7 @@ impl Size2D {
 /* --- --- --- Size3D --- --- --- */
 
 /// A size inside the three dimensional space.
-#[derive(Debug, Copy, Clone, PartialEq)]
+#[derive(Debug, Copy, Clone, PartialEq, Serialize, Deserialize)]
 pub struct Size3D {
     pub width: f64,
     pub height: f64,
@@ -613,7 +615,7 @@ impl Size3D {
 
 /* --- --- --- Transformation2D --- --- --- */
 
-#[derive(Debug, PartialEq, Clone)]
+#[derive(Debug, PartialEq, Clone, Serialize, Deserialize)]
 pub enum Transformation2D {
     Translation {
         direction: Vector2D,
@@ -1013,14 +1015,14 @@ mod tests {
 
 /* --- --- --- Transformation3D --- --- --- */
 
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub enum Transformation3D {
     // TODO:
 }
 
 /* --- --- --- Transformations2D --- --- --- */
 
-#[derive(Debug, Default, Clone, PartialEq)]
+#[derive(Debug, Default, Clone, PartialEq, Serialize, Deserialize)]
 pub struct Transformations2D {
     pub transformations: Vec<Transformation2D>,
 }
@@ -1048,7 +1050,7 @@ impl Transformations2D {
 
 /* --- --- --- Transformations3D --- --- --- */
 
-#[derive(Debug, Default, Clone)]
+#[derive(Debug, Default, Clone, Serialize, Deserialize)]
 pub struct Transformations3D {
     pub transformations: Vec<Transformation3D>,
 }

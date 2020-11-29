@@ -13,3 +13,4 @@ license = "MIT"
 
 [dependencies]
 rand = "0.7.3"
+serde = { version = "1.0.117", features = ["derive"] }

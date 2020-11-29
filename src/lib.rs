@@ -5,13 +5,19 @@
 
 #![feature(iterator_fold_self)]
 
-extern crate rand;
+pub extern crate rand;
+pub extern crate serde;
 
 pub mod math;
 pub mod space;
 
 use std::fmt::Debug;
 
+use rand::Rng;
+
+use serde::{Deserialize, Serialize};
+
+use serde::de::DeserializeOwned;
 use space::{Position, Space};
 
 /// Space for the observable environment state.
@@ -27,8 +33,20 @@ pub type ActionSpace = Space;
 pub type AgentAction = Position;
 
 /// Provides conversion from various values into acceptable seed values.
+#[derive(Clone, Serialize, Deserialize)]
 pub struct Seed {
     pub seed_value: Vec<u8>,
+}
+
+impl Seed {
+    /// Creates a new seed generated with 32 randomly selected u8 values from the thread_rng().
+    pub fn new_random() -> Self {
+        let mut seed_value = Vec::with_capacity(32);
+        for _ in 0..32 {
+            seed_value.push(rand::thread_rng().gen::<u8>());
+        }
+        Self { seed_value }
+    }
 }
 
 impl From<String> for Seed {
@@ -208,10 +226,11 @@ pub trait ToActionMapper<I: Clone, E: std::error::Error> {
 }
 
 /// Base trait for an environment.
-pub trait Environment<E, I>
+pub trait Environment<E, I, D>
 where
     E: std::error::Error,
     I: Debug,
+    D: Serialize + DeserializeOwned,
 {
     /// Returns the available boundaries for the actions for this environment.
     fn action_space() -> ActionSpace;
@@ -233,8 +252,18 @@ where
     /// If predictable behaviour is wished, it's recommended to call `seed` in front of `reset`.
     fn reset(&mut self) -> Result<EnvironmentState, E>;
 
+    /// Returns the current state of the environment.
+    fn state(&self) -> EnvironmentState;
+
     /// Performs a step within this environment with the given agent action
     fn step(&mut self, action: &AgentAction) -> Result<(EnvironmentState, f64, bool, I), E>;
+
+    /// Overrides the environments state with the provided data structure containing a previous state.
+    fn load(&mut self, data: D) -> Result<(), E>;
+
+    /// Returns a serializable structure containing everything to reconstruct the environment at
+    /// the given state.
+    fn store(&self) -> D;
 
     /// Cleans up resources of this environment.
     ///
@@ -243,9 +272,10 @@ where
 }
 
 /// Base trait for an agent.
-pub trait Agent<E>
+pub trait Agent<E, D>
 where
     E: std::error::Error,
+    D: Serialize + DeserializeOwned,
 {
     /// Resets a possible internal random number generator with the given seed or by entropy.
     fn reseed(&mut self, random_seed: Option<Seed>) -> Result<(), E>;
@@ -269,6 +299,13 @@ where
         reward: f64,
         is_done: bool,
     ) -> Result<(), E>;
+
+    /// Overrides the environments state with the provided data structure containing a previous state.
+    fn load(&mut self, data: D) -> Result<(), E>;
+
+    /// Returns a serializable structure containing everything to reconstruct the agent at
+    /// the given state.
+    fn store(&self) -> D;
 
     /// Cleans up resources of this agent.
     ///
