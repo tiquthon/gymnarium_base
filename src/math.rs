@@ -622,7 +622,7 @@ pub enum Transformation2D {
     },
     Identity,
     Rotation {
-        angle: f64,
+        angle_in_degree: f64,
     },
     Scale {
         x_factor: f64,
@@ -664,8 +664,8 @@ impl Transformation2D {
         Self::Identity
     }
 
-    pub fn rotation(angle: f64) -> Self {
-        Self::Rotation { angle }
+    pub fn rotation(angle_in_degree: f64) -> Self {
+        Self::Rotation { angle_in_degree }
     }
 
     pub fn scale(x_factor: f64, y_factor: f64) -> Self {
@@ -737,9 +737,17 @@ impl Transformation2D {
                 [0f64, 0f64, 1f64],
             ],
             Self::Identity => [[1f64, 0f64, 0f64], [0f64, 1f64, 0f64], [0f64, 0f64, 1f64]],
-            Self::Rotation { angle } => [
-                [angle.cos(), -(angle.sin()), 0f64],
-                [angle.sin(), angle.cos(), 0f64],
+            Self::Rotation { angle_in_degree } => [
+                [
+                    degree_to_radians(*angle_in_degree).cos(),
+                    -(degree_to_radians(*angle_in_degree).sin()),
+                    0f64,
+                ],
+                [
+                    degree_to_radians(*angle_in_degree).sin(),
+                    degree_to_radians(*angle_in_degree).cos(),
+                    0f64,
+                ],
                 [0f64, 0f64, 1f64],
             ],
             Self::Scale { x_factor, y_factor } => [
@@ -765,13 +773,13 @@ impl Transformation2D {
                 [0f64, 0f64, 1f64],
             ],
             Self::ShearXDegree { degree } => [
-                [1f64, degree.tan(), 0f64],
+                [1f64, degree_to_radians(*degree).tan(), 0f64],
                 [0f64, 1f64, 0f64],
                 [0f64, 0f64, 1f64],
             ],
             Self::ShearYDegree { degree } => [
                 [1f64, 0f64, 0f64],
-                [degree.tan(), 1f64, 0f64],
+                [degree_to_radians(*degree).tan(), 1f64, 0f64],
                 [0f64, 0f64, 1f64],
             ],
             Self::Composition {
@@ -810,6 +818,14 @@ impl Transformation2D {
 }
 
 /* --- --- --- Matrix, Vector Things --- --- --- */
+
+fn _radians_to_degree(radians: f64) -> f64 {
+    (radians * 180f64) / std::f64::consts::PI
+}
+
+fn degree_to_radians(degree: f64) -> f64 {
+    (degree * std::f64::consts::PI) / 180f64
+}
 
 pub fn multiply_matrices_3x3(matrix_a: [[f64; 3]; 3], matrix_b: [[f64; 3]; 3]) -> [[f64; 3]; 3] {
     [
@@ -913,6 +929,16 @@ pub fn inverse_of_matrix_3x3(matrix: [[f64; 3]; 3]) -> [[f64; 3]; 3] {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn test_radians_to_degree() {
+        assert_eq!(180f64, _radians_to_degree(std::f64::consts::PI));
+    }
+
+    #[test]
+    fn test_degree_to_radians() {
+        assert_eq!(std::f64::consts::PI / 5f64, degree_to_radians(36f64));
+    }
 
     #[test]
     fn multiply_matrices_3x3_works() {
@@ -1054,3 +1080,5 @@ impl Transformations2D {
 pub struct Transformations3D {
     pub transformations: Vec<Transformation3D>,
 }
+
+/* --- --- --- --- --- --- --- --- --- --- --- */

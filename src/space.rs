@@ -211,6 +211,8 @@ use std::ops::{Index, IndexMut, RangeInclusive};
 use rand::distributions::{Distribution, Uniform};
 use rand::Rng;
 
+use serde::{Deserialize, Serialize};
+
 /* --- --- --- INDEX --- --- --- */
 
 /// Calculates the index inside a n-dimensional Vec stored inside a one-dimensional Vec.
@@ -299,6 +301,7 @@ impl std::fmt::Display for FormatError {
 
 impl std::error::Error for FormatError {}
 
+#[derive(Serialize, Deserialize)]
 struct SubFormat {
     offset: usize,
     shape: Vec<usize>,
@@ -317,7 +320,7 @@ impl SubFormat {
 }
 
 /// Structure to define irregular structures (Read the bottom of the module description).
-#[derive(Default)]
+#[derive(Default, Serialize, Deserialize)]
 pub struct Format {
     v: HashMap<String, SubFormat>,
     length: usize,
@@ -502,7 +505,7 @@ impl Format {
 /* --- --- --- SPACE --- --- --- */
 
 /// Defines a space in which states or positions can be placed.
-#[derive(Default, Debug, PartialEq, Clone)]
+#[derive(Default, Debug, PartialEq, Clone, Serialize, Deserialize)]
 pub struct Space {
     boundaries: Vec<DimensionBoundaries>,
     dimensions: Vec<usize>,
@@ -629,7 +632,7 @@ impl IndexMut<&[usize]> for Space {
 /* --- --- --- POSITION --- --- --- */
 
 /// Defines the state or position inside a space.
-#[derive(Default, Debug, PartialEq, Clone)]
+#[derive(Default, Debug, PartialEq, Clone, Serialize, Deserialize)]
 pub struct Position {
     values: Vec<DimensionValue>,
     dimensions: Vec<usize>,
@@ -725,7 +728,7 @@ impl IndexMut<&[usize]> for Position {
 /* --- --- --- DIMENSION BOUNDARIES --- --- --- */
 
 /// The inclusive upper and inclusive lower bound of a dimension.
-#[derive(Debug, PartialEq, Clone, Copy)]
+#[derive(Debug, PartialEq, Clone, Copy, Serialize, Deserialize)]
 pub enum DimensionBoundaries {
     INTEGER(i32, i32),
     FLOAT(f32, f32),
@@ -827,7 +830,7 @@ impl From<RangeInclusive<f32>> for DimensionBoundaries {
 /* --- --- --- DIMENSION VALUE --- --- --- */
 
 /// A value inside a dimension.
-#[derive(Debug, PartialEq, Clone, Copy)]
+#[derive(Debug, PartialEq, Clone, Copy, Serialize, Deserialize)]
 pub enum DimensionValue {
     INTEGER(i32),
     FLOAT(f32),
