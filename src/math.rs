@@ -739,13 +739,13 @@ impl Transformation2D {
             Self::Identity => [[1f64, 0f64, 0f64], [0f64, 1f64, 0f64], [0f64, 0f64, 1f64]],
             Self::Rotation { angle_in_degree } => [
                 [
-                    degree_to_radians(*angle_in_degree).cos(),
-                    -(degree_to_radians(*angle_in_degree).sin()),
+                    degrees_to_radians(*angle_in_degree).cos(),
+                    -(degrees_to_radians(*angle_in_degree).sin()),
                     0f64,
                 ],
                 [
-                    degree_to_radians(*angle_in_degree).sin(),
-                    degree_to_radians(*angle_in_degree).cos(),
+                    degrees_to_radians(*angle_in_degree).sin(),
+                    degrees_to_radians(*angle_in_degree).cos(),
                     0f64,
                 ],
                 [0f64, 0f64, 1f64],
@@ -773,13 +773,13 @@ impl Transformation2D {
                 [0f64, 0f64, 1f64],
             ],
             Self::ShearXDegree { degree } => [
-                [1f64, degree_to_radians(*degree).tan(), 0f64],
+                [1f64, degrees_to_radians(*degree).tan(), 0f64],
                 [0f64, 1f64, 0f64],
                 [0f64, 0f64, 1f64],
             ],
             Self::ShearYDegree { degree } => [
                 [1f64, 0f64, 0f64],
-                [degree_to_radians(*degree).tan(), 1f64, 0f64],
+                [degrees_to_radians(*degree).tan(), 1f64, 0f64],
                 [0f64, 0f64, 1f64],
             ],
             Self::Composition {
@@ -819,11 +819,11 @@ impl Transformation2D {
 
 /* --- --- --- Matrix, Vector Things --- --- --- */
 
-fn _radians_to_degree(radians: f64) -> f64 {
+pub fn radians_to_degrees(radians: f64) -> f64 {
     (radians * 180f64) / std::f64::consts::PI
 }
 
-fn degree_to_radians(degree: f64) -> f64 {
+pub fn degrees_to_radians(degree: f64) -> f64 {
     (degree * std::f64::consts::PI) / 180f64
 }
 
@@ -931,13 +931,13 @@ mod tests {
     use super::*;
 
     #[test]
-    fn test_radians_to_degree() {
-        assert_eq!(180f64, _radians_to_degree(std::f64::consts::PI));
+    fn test_radians_to_degrees() {
+        assert_eq!(180f64, radians_to_degrees(std::f64::consts::PI));
     }
 
     #[test]
-    fn test_degree_to_radians() {
-        assert_eq!(std::f64::consts::PI / 5f64, degree_to_radians(36f64));
+    fn test_degrees_to_radians() {
+        assert_eq!(std::f64::consts::PI / 5f64, degrees_to_radians(36f64));
     }
 
     #[test]
