@@ -134,6 +134,8 @@ impl From<u64> for Seed {
     }
 }
 
+// Allowing into because I am not sure implementing it the other way around is the correct way
+#[allow(clippy::from_over_into)]
 impl Into<[u8; 32]> for Seed {
     /// # Examples
     /// ```
@@ -157,6 +159,8 @@ impl Into<[u8; 32]> for Seed {
     }
 }
 
+// Allowing into because I am not sure implementing it the other way around is the correct way
+#[allow(clippy::from_over_into)]
 impl Into<[u8; 16]> for Seed {
     /// # Examples
     /// ```
@@ -179,6 +183,8 @@ impl Into<[u8; 16]> for Seed {
     }
 }
 
+// Allowing into because I am not sure implementing it the other way around is the correct way
+#[allow(clippy::from_over_into)]
 impl Into<[u8; 8]> for Seed {
     /// # Examples
     /// ```
@@ -200,6 +206,8 @@ impl Into<[u8; 8]> for Seed {
     }
 }
 
+// Allowing into because I am not sure implementing it the other way around is the correct way
+#[allow(clippy::from_over_into)]
 impl Into<u64> for Seed {
     /// # Examples
     /// ```
