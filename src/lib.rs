@@ -233,10 +233,22 @@ pub trait ToActionMapper<I: Clone, E: std::error::Error> {
     fn map(&mut self, input: &I) -> Result<AgentAction, E>;
 }
 
+/// Base trait for rewards returned by environments with the step method.
+pub trait Reward: Default + Debug {
+    fn value(&self) -> f64;
+}
+
+impl Reward for f64 {
+    fn value(&self) -> f64 {
+        *self
+    }
+}
+
 /// Base trait for an environment.
-pub trait Environment<E, I, D>
+pub trait Environment<E, R, I, D>
 where
     E: std::error::Error,
+    R: Reward,
     I: Debug,
     D: Serialize + DeserializeOwned,
 {
@@ -264,7 +276,7 @@ where
     fn state(&self) -> EnvironmentState;
 
     /// Performs a step within this environment with the given agent action
-    fn step(&mut self, action: &AgentAction) -> Result<(EnvironmentState, f64, bool, I), E>;
+    fn step(&mut self, action: &AgentAction) -> Result<(EnvironmentState, R, bool, I), E>;
 
     /// Overrides the environments state with the provided data structure containing a previous state.
     fn load(&mut self, data: D) -> Result<(), E>;
@@ -280,9 +292,10 @@ where
 }
 
 /// Base trait for an agent.
-pub trait Agent<E, D>
+pub trait Agent<E, R, D>
 where
     E: std::error::Error,
+    R: Reward,
     D: Serialize + DeserializeOwned,
 {
     /// Resets a possible internal random number generator with the given seed or by entropy.
@@ -303,8 +316,9 @@ where
     fn process_reward(
         &mut self,
         old_state: &EnvironmentState,
+        last_action: &AgentAction,
         new_state: &EnvironmentState,
-        reward: f64,
+        reward: R,
         is_done: bool,
     ) -> Result<(), E>;
 
