@@ -234,7 +234,7 @@ pub trait ToActionMapper<I: Clone, E: std::error::Error> {
 }
 
 /// Base trait for rewards returned by environments with the step method.
-pub trait Reward: Default + Debug {
+pub trait Reward: Debug {
     fn value(&self) -> f64;
 }
 
