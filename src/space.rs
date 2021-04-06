@@ -190,16 +190,16 @@
 //! assert_eq!(
 //!     format.get_subposition(&position, &"sensors.position".to_string()),
 //!     Ok(Position::simple(vec![
-//!         DimensionValue::FLOAT(18.130913f32),
-//!         DimensionValue::FLOAT(40.79979f32),
-//!         DimensionValue::FLOAT(80.73178f32)
+//!         DimensionValue::Float(18.130913f32),
+//!         DimensionValue::Float(40.79979f32),
+//!         DimensionValue::Float(80.73178f32)
 //!     ]))
 //! );
 //!
 //! // Get a single value from this position:
 //! assert_eq!(
 //!     format.get_value(&position, &"ext_controller".to_string(), &vec![2]),
-//!     Ok(&DimensionValue::INTEGER(0))
+//!     Ok(&DimensionValue::Integer(0))
 //! );
 //! ```
 //!
@@ -355,7 +355,7 @@ impl Format {
     }
 
     pub fn new_space(&self) -> Space {
-        Space::simple_all(DimensionBoundaries::INTEGER(0, 0), self.length)
+        Space::simple_all(DimensionBoundaries::Integer(0, 0), self.length)
     }
 
     pub fn get_subspace(&self, space: &Space, key: &str) -> Result<Space, FormatError> {
@@ -730,8 +730,8 @@ impl IndexMut<&[usize]> for Position {
 /// The inclusive upper and inclusive lower bound of a dimension.
 #[derive(Debug, PartialEq, Clone, Copy, Serialize, Deserialize)]
 pub enum DimensionBoundaries {
-    INTEGER(i32, i32),
-    FLOAT(f32, f32),
+    Integer(i32, i32),
+    Float(f32, f32),
 }
 
 impl DimensionBoundaries {
@@ -741,43 +741,43 @@ impl DimensionBoundaries {
 
     pub fn sample_with<R: Rng + ?Sized>(&self, rng: &mut R) -> DimensionValue {
         match self {
-            Self::INTEGER(min, max) => {
-                DimensionValue::INTEGER(Uniform::new_inclusive(min, max).sample(rng))
+            Self::Integer(min, max) => {
+                DimensionValue::Integer(Uniform::new_inclusive(min, max).sample(rng))
             }
-            Self::FLOAT(min, max) => {
-                DimensionValue::FLOAT(Uniform::new_inclusive(min, max).sample(rng))
+            Self::Float(min, max) => {
+                DimensionValue::Float(Uniform::new_inclusive(min, max).sample(rng))
             }
         }
     }
 
     pub fn matches(&self, value: &DimensionBoundaries) -> bool {
         match self {
-            Self::INTEGER(_, _) => match value {
-                Self::INTEGER(_, _) => true,
-                Self::FLOAT(_, _) => false,
+            Self::Integer(_, _) => match value {
+                Self::Integer(_, _) => true,
+                Self::Float(_, _) => false,
             },
-            Self::FLOAT(_, _) => match value {
-                Self::INTEGER(_, _) => false,
-                Self::FLOAT(_, _) => true,
+            Self::Float(_, _) => match value {
+                Self::Integer(_, _) => false,
+                Self::Float(_, _) => true,
             },
         }
     }
 
     pub fn contains(&self, value: &DimensionValue) -> bool {
         match self {
-            Self::INTEGER(min, max) => match value {
-                DimensionValue::INTEGER(val) => *min <= *val && *val <= *max,
-                DimensionValue::FLOAT(_) => false,
+            Self::Integer(min, max) => match value {
+                DimensionValue::Integer(val) => *min <= *val && *val <= *max,
+                DimensionValue::Float(_) => false,
             },
-            Self::FLOAT(min, max) => match value {
-                DimensionValue::INTEGER(_) => false,
-                DimensionValue::FLOAT(val) => *min <= *val && *val <= *max,
+            Self::Float(min, max) => match value {
+                DimensionValue::Integer(_) => false,
+                DimensionValue::Float(val) => *min <= *val && *val <= *max,
             },
         }
     }
 
     pub fn expect_integer(&self) -> (i32, i32) {
-        if let Self::INTEGER(start, end) = self {
+        if let Self::Integer(start, end) = self {
             (*start, *end)
         } else {
             panic!("{:?} is not INTEGER as expected", self);
@@ -785,7 +785,7 @@ impl DimensionBoundaries {
     }
 
     pub fn expect_float(&self) -> (f32, f32) {
-        if let Self::FLOAT(start, end) = self {
+        if let Self::Float(start, end) = self {
             (*start, *end)
         } else {
             panic!("{:?} is not FLOAT as expected", self);
@@ -797,13 +797,13 @@ impl DimensionBoundaries {
 
 impl From<i32> for DimensionBoundaries {
     fn from(value: i32) -> Self {
-        Self::INTEGER(0.min(value), 0.max(value))
+        Self::Integer(0.min(value), 0.max(value))
     }
 }
 
 impl From<RangeInclusive<i32>> for DimensionBoundaries {
     fn from(range_inclusive: RangeInclusive<i32>) -> Self {
-        Self::INTEGER(
+        Self::Integer(
             (*(range_inclusive.start())).min(*(range_inclusive.end())),
             (*(range_inclusive.start())).max(*(range_inclusive.end())),
         )
@@ -814,13 +814,13 @@ impl From<RangeInclusive<i32>> for DimensionBoundaries {
 
 impl From<f32> for DimensionBoundaries {
     fn from(value: f32) -> Self {
-        Self::FLOAT(0f32.min(value), 0f32.max(value))
+        Self::Float(0f32.min(value), 0f32.max(value))
     }
 }
 
 impl From<RangeInclusive<f32>> for DimensionBoundaries {
     fn from(range_inclusive: RangeInclusive<f32>) -> Self {
-        Self::FLOAT(
+        Self::Float(
             (*(range_inclusive.start())).min(*(range_inclusive.end())),
             (*(range_inclusive.start())).max(*(range_inclusive.end())),
         )
@@ -832,26 +832,26 @@ impl From<RangeInclusive<f32>> for DimensionBoundaries {
 /// A value inside a dimension.
 #[derive(Debug, PartialEq, Clone, Copy, Serialize, Deserialize)]
 pub enum DimensionValue {
-    INTEGER(i32),
-    FLOAT(f32),
+    Integer(i32),
+    Float(f32),
 }
 
 impl DimensionValue {
     pub fn matches(&self, value: &DimensionValue) -> bool {
         match self {
-            Self::INTEGER(_) => match value {
-                Self::INTEGER(_) => true,
-                Self::FLOAT(_) => false,
+            Self::Integer(_) => match value {
+                Self::Integer(_) => true,
+                Self::Float(_) => false,
             },
-            Self::FLOAT(_) => match value {
-                Self::INTEGER(_) => false,
-                Self::FLOAT(_) => true,
+            Self::Float(_) => match value {
+                Self::Integer(_) => false,
+                Self::Float(_) => true,
             },
         }
     }
 
     pub fn expect_integer(&self) -> i32 {
-        if let Self::INTEGER(value) = self {
+        if let Self::Integer(value) = self {
             *value
         } else {
             panic!("{:?} is not INTEGER as expected", self);
@@ -859,7 +859,7 @@ impl DimensionValue {
     }
 
     pub fn expect_float(&self) -> f32 {
-        if let Self::FLOAT(value) = self {
+        if let Self::Float(value) = self {
             *value
         } else {
             panic!("{:?} is not FLOAT as expected", self);
@@ -871,7 +871,7 @@ impl DimensionValue {
 
 impl From<i32> for DimensionValue {
     fn from(value: i32) -> Self {
-        Self::INTEGER(value)
+        Self::Integer(value)
     }
 }
 
@@ -879,6 +879,6 @@ impl From<i32> for DimensionValue {
 
 impl From<f32> for DimensionValue {
     fn from(value: f32) -> Self {
-        Self::FLOAT(value)
+        Self::Float(value)
     }
 }

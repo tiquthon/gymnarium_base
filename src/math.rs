@@ -787,7 +787,7 @@ impl Transformation2D {
             } => transformations
                 .iter()
                 .map(|transformation| transformation.transformation_matrix())
-                .fold_first(multiply_matrices_3x3)
+                .reduce(multiply_matrices_3x3)
                 .unwrap_or_else(|| Self::identity().transformation_matrix()),
             Self::Custom { transformation, .. } => *transformation,
         }
@@ -1058,7 +1058,7 @@ impl Transformations2D {
         self.transformations
             .iter()
             .map(|transformation| transformation.transformation_matrix())
-            .fold_first(multiply_matrices_3x3)
+            .reduce(multiply_matrices_3x3)
             .unwrap_or_else(|| Transformation2D::identity().transformation_matrix())
     }
 
